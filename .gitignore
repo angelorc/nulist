@@ -10,3 +10,4 @@ coverage
 .swc
 .turbo
 .env.prod
+*.tsbuildinfo
