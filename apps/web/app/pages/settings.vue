@@ -27,7 +27,7 @@ const { settings: links } = useNavigation()
     </template>
 
     <template #body>
-      <div class="mx-auto flex w-full flex-col gap-6 sm:gap-8 lg:max-w-3xl">
+      <div class="mx-auto flex w-full flex-col gap-6 sm:gap-8 lg:max-w-5xl">
         <NuxtPage />
       </div>
     </template>
