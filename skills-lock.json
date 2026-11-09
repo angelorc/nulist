@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "913b9d37d0d54047dd65222bb8c67b2bf04e3cb87dcad1729068d7a8b2c8c396"
+    },
+    "install-anti-slop": {
+      "source": "dmmulroy/anti-slop",
+      "sourceType": "github",
+      "skillPath": "skills/install-anti-slop/SKILL.md",
+      "computedHash": "1b9b5d3c0d9e0ef8dd7631f4d637e66b62a73e34dceaf4ae07c0d3de376fd7d7"
+    },
+    "nuxt": {
+      "source": "nuxt-skill.onmax.me",
+      "sourceUrl": "https://nuxt-skill.onmax.me/",
+      "sourceType": "well-known",
+      "computedHash": "5f055853f0c527abced1c6263786f8d37a33ed1957cac4156faf5980e37f2c18",
+      "wellKnownDigest": "sha256:12259ea87cd8a773e756cd9698789a6679ad4de14a8033281509eb6579b37eec"
+    },
+    "turborepo": {
+      "source": "vercel/turborepo",
+      "sourceType": "github",
+      "skillPath": "skills/turborepo/SKILL.md",
+      "computedHash": "c83a6ff75c62092f71da91408164ed3426f11749b032fd23ecc855e27c2fb538"
+    }
+  }
+}
