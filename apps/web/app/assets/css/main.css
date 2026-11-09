@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+/* Design tokens: DESIGN.md §2 (Nuxt UI color aliases live in app/app.config.ts). */
+@theme static {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Motion: one easing for every transition (`ease-out`), also used by Nuxt UI animations. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out-soft: var(--ease-out);
+}
+
+:root {
+  --ui-radius: 0.25rem;
+  --ui-text-muted: var(--ui-color-neutral-500);
+}
+
+.dark {
+  --ui-bg: #0a0a0a;
+  --ui-bg-muted: var(--ui-color-neutral-900);
+  --ui-bg-elevated: var(--ui-color-neutral-900);
+  --ui-border: var(--ui-color-neutral-800);
+  --ui-text-muted: var(--ui-color-neutral-400);
+}
+
+html {
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular-nums,
+table td,
+table th {
+  font-variant-numeric: tabular-nums;
+}
+
+/* DESIGN.md §8: a visible 2px ring with a 2px offset; Nuxt UI controls set their own color. */
+:focus-visible {
+  outline-offset: 2px;
+}
+
+/* DESIGN.md §2 Motion: with reduced motion, transitions and animations settle at once. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
