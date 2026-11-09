@@ -11,6 +11,15 @@ updates:
     groups:
       dependencies:
         patterns: ['*']
+    ignore:
+      # vue-tsc needs the TypeScript JS API, which TypeScript 7 (native compiler) no longer ships
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # Kept on the majors @nuxt/ui depends on, so UTable and its composables share one copy
+      - dependency-name: '@tanstack/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@vueuse/*'
+        update-types: ['version-update:semver-major']
     open-pull-requests-limit: 5
   - package-ecosystem: docker
     directory: /
