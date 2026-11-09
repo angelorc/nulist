@@ -111,7 +111,7 @@ export class TransactionalComposer {
 
     if (!this.general.defaultFromEmail) {
       throw new ValidationError(
-        'Pass "from", or set a default sender email in Settings → General.',
+        'Pass "from", or set a default sender email in Settings → Sending.',
         { field: 'from' }
       )
     }

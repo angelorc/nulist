@@ -19,7 +19,7 @@ type NewMessage = Omit<typeof messages.$inferInsert, 'organizationId'>
 /**
  * Sends one rendered copy of an organization's template to a single address
  * (kind `system`), using sample variables and the organization's default sender
- * from Settings → General. The message row belongs to the organization, counts
+ * from Settings → Sending. The message row belongs to the organization, counts
  * against its sending limits and goes out through its provider.
  */
 export class TemplateTestSender {
@@ -43,7 +43,7 @@ export class TemplateTestSender {
 
     if (!general.defaultFromEmail) {
       throw new ValidationError(
-        'Set a default sender email in Settings → General before sending a test.',
+        'Set a default sender email in Settings → Sending before sending a test.',
         { field: 'defaultFromEmail' }
       )
     }

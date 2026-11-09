@@ -25,7 +25,15 @@ interface SettingsCardBinding {
   onDiscard: () => void
 }
 
-const props = defineProps<{ section: S }>()
+const props = withDefaults(
+  defineProps<{
+    section: S
+    /** Show the read-only / limits notice; off for a section embedded in another page. */
+    notice?: boolean
+  }>(),
+  { notice: true }
+)
+
 const emit = defineEmits<{ saved: [keys: readonly Key[]] }>()
 
 defineSlots<{
@@ -167,7 +175,7 @@ onBeforeRouteLeave(async () => {
   </EmptyState>
   <template v-else>
     <UAlert
-      v-if="isLimits"
+      v-if="notice && isLimits"
       icon="i-lucide-lock"
       title="Limits are set by your instance administrator"
       :description="
@@ -190,7 +198,7 @@ onBeforeRouteLeave(async () => {
       "
     />
     <UAlert
-      v-else-if="!canEdit"
+      v-else-if="notice && !canEdit"
       icon="i-lucide-lock"
       title="You can view these settings"
       description="Ask an owner or admin to change them."

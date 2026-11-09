@@ -139,7 +139,7 @@ export class SystemMail {
 
     if (!general.defaultFromEmail) {
       throw new ValidationError(
-        'Set a default from email in Settings → General before sending emails.',
+        'Set a default from email in Settings → Sending before sending emails.',
         { field: 'defaultFromEmail' }
       )
     }

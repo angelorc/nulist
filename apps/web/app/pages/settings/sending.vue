@@ -84,6 +84,13 @@ const { user } = useUserSession()
 const { organization, can } = useOrganization()
 const canUpdate = computed(() => can({ settings: ['update'] }))
 const canReadWebhooks = computed(() => can({ webhook: ['read'] }))
+const canReadDomains = computed(() => can({ domain: ['read'] }))
+
+function senderPreview(name: string, email: string) {
+  if (!email) return 'Not set'
+
+  return name ? `${name} <${email}>` : email
+}
 
 // Quota is optional context: load it without blocking the page.
 const {
@@ -285,6 +292,59 @@ async function onSendTest(event: FormSubmitEvent<TestEmailInput>) {
         />
       </template>
     </SettingsCard>
+
+    <!-- Default sender (stored in the general section) ------------------- -->
+    <SettingsDocument
+      v-slot="{ state: general, group: generalGroup }"
+      section="general"
+      :notice="false"
+    >
+      <SettingsCard
+        title="Default sender"
+        description="Used for broadcasts and system email unless a message sets its own sender."
+        v-bind="generalGroup(['defaultFromName', 'defaultFromEmail', 'defaultReplyTo'])"
+      >
+        <div class="grid gap-4 sm:grid-cols-2">
+          <UFormField label="From name" name="defaultFromName">
+            <UInput v-model="general.defaultFromName" placeholder="Acme" class="w-full" />
+          </UFormField>
+          <UFormField label="From email" name="defaultFromEmail">
+            <UInput
+              v-model="general.defaultFromEmail"
+              type="email"
+              placeholder="hello@acme.com"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
+        <UFormField
+          label="Reply-to"
+          name="defaultReplyTo"
+          help="Leave empty to receive replies at the from address."
+        >
+          <UInput
+            v-model="general.defaultReplyTo"
+            type="email"
+            placeholder="support@acme.com"
+            class="w-full"
+          />
+        </UFormField>
+        <div
+          class="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md bg-elevated/50 px-3 py-2 text-[13px] ring ring-default"
+        >
+          <span class="text-muted">Recipients see</span>
+          <span class="min-w-0 truncate font-mono text-xs text-highlighted">{{
+            senderPreview(general.defaultFromName, general.defaultFromEmail)
+          }}</span>
+        </div>
+        <p class="text-[13px] text-muted">
+          The from domain must be verified with your provider.
+          <ULink v-if="canReadDomains" to="/settings/domains" class="font-medium text-primary"
+            >Check domains</ULink
+          >
+        </p>
+      </SettingsCard>
+    </SettingsDocument>
 
     <!-- SES quota ---------------------------------------------------------- -->
     <SettingsCard
