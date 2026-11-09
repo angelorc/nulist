@@ -17,7 +17,6 @@
     "seed": "tsx scripts/seed.ts",
     "db:reset": "tsx scripts/db.ts reset",
     "db:demo": "tsx scripts/db.ts demo",
-    "db:demo:save": "tsx scripts/db.ts demo:save",
     "test": "vitest run",
     "auth:generate": "auth generate --config scripts/auth-cli.ts --output server/db/auth-schema.ts --yes",
     "db:setup": "drizzle-kit migrate && pnpm workflow:bootstrap"
