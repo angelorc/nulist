@@ -1,0 +1,1 @@
+{"root":["./access-control.test.ts","./audience.test.ts","./delivery.test.ts","./organization-settings.test.ts","./subscriptions.test.ts","./tenancy.test.ts","./support/RecordingEmailProvider.ts","./support/WebhookReceiver.ts","./support/__probe.ts","./support/database.ts","./support/global-setup.ts","./support/platform.ts"],"errors":true,"version":"6.0.3"}

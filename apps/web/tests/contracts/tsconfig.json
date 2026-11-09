@@ -1,0 +1,6 @@
+{
+  // Compile-time contract between packages/sdk and the REST API v1, checked by `nuxi typecheck`,
+  // together with the functional test-suite (../*.test.ts and its ../support helpers).
+  "extends": "../../.nuxt/tsconfig.server.json",
+  "include": ["./**/*.ts", "../*.test.ts", "../support/**/*.ts"]
+}
