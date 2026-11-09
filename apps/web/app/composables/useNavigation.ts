@@ -13,6 +13,12 @@ export interface NavEntry extends NavigationMenuItem {
   /** Instance administrators only (no organization needed). */
   instanceAdmin?: boolean
   children?: NavEntry[]
+  /**
+   * Pages behind a single link (no submenu): the link opens the first one the
+   * member may open, stays highlighted on all of them, and each page is its own
+   * ⌘K destination.
+   */
+  pages?: NavEntry[]
 }
 
 /** A ⌘K action ("New broadcast"), shown when the member may perform it. */
@@ -37,6 +43,8 @@ export interface NavigationAccess {
   hasOrganization: boolean
   isInstanceAdmin: boolean
   can(request: PermissionRequest): boolean
+  /** Current route path, used to highlight a link that stands for several pages. */
+  currentPath?: string
 }
 
 const MAIN: NavEntry[] = [
@@ -93,7 +101,7 @@ const MAIN: NavEntry[] = [
   }
 ]
 
-/** Settings pages: the sidebar's Settings children and the settings sub-navigation. */
+/** Settings pages: the settings sub-navigation, behind the sidebar's single Settings link. */
 const SETTINGS: NavEntry[] = [
   {
     label: 'General',
@@ -160,7 +168,7 @@ const SECONDARY: NavEntry[] = [
     to: '/webhooks',
     permission: { webhook: ['read'] }
   },
-  { label: 'Settings', icon: 'i-lucide-settings', type: 'trigger', children: SETTINGS }
+  { label: 'Settings', icon: 'i-lucide-settings', pages: SETTINGS }
 ]
 
 const ACTIONS: NavAction[] = [
@@ -243,7 +251,9 @@ export class NavigationFilter {
   /** Visible links of `entries` (children flattened), for the ⌘K palette and shortcuts. */
   destinations(entries: readonly NavEntry[], prefix?: string): NavDestination[] {
     return entries.flatMap((entry) => {
-      if (entry.children) return this.destinations(entry.children, entry.label)
+      const nested = entry.children ?? entry.pages
+
+      if (nested) return this.destinations(nested, entry.label)
 
       if (entry.type === 'label' || !entry.to || !this.allows(entry)) return []
 
@@ -261,8 +271,32 @@ export class NavigationFilter {
     return actions.filter((action) => this.access.can(action.permission))
   }
 
+  /** Whether the current route is one of `pages` (set by the caller through `currentPath`). */
+  private isUnder(pages: readonly NavEntry[]): boolean {
+    const path = this.access.currentPath
+
+    if (path === undefined) return false
+
+    return pages.some(
+      (page) => !!page.to && (path === page.to || (!page.exact && path.startsWith(`${page.to}/`)))
+    )
+  }
+
   /** The menu item for an entry without access metadata, or null when it is hidden. */
   private item(entry: NavEntry): NavigationMenuItem | null {
+    if (entry.pages) {
+      const first = this.menu(entry.pages)[0]
+
+      if (!first) return null
+
+      return {
+        label: entry.label,
+        icon: entry.icon,
+        to: first.to,
+        active: this.isUnder(entry.pages)
+      }
+    }
+
     if (entry.children) {
       const children = this.menu(entry.children)
       const first = children[0]
@@ -298,13 +332,15 @@ export class NavigationFilter {
  */
 export function useNavigation() {
   const organization = useOrganization()
+  const route = useRoute()
 
   const filter = computed(
     () =>
       new NavigationFilter({
         hasOrganization: organization.organization.value !== null,
         isInstanceAdmin: organization.isInstanceAdmin.value,
-        can: organization.can
+        can: organization.can,
+        currentPath: route.path
       })
   )
 
