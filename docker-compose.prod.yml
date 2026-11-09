@@ -1,0 +1,89 @@
+# Production stack: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# Put a TLS-terminating reverse proxy in front of `web` and set MLIST_TRUSTED_PROXIES accordingly.
+# Optional bundled S3 storage (RustFS): add `--profile storage`.
+name: mlist-prod
+
+x-app-env: &app-env
+  NODE_ENV: production
+  NUXT_DATABASE_URL: postgres://${POSTGRES_USER:-mlist}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mlist}
+  WORKFLOW_TARGET_WORLD: '@workflow/world-postgres'
+  WORKFLOW_POSTGRES_URL: postgres://${POSTGRES_USER:-mlist}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mlist}
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mlist}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-mlist}
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Applies Drizzle migrations and bootstraps the workflow tables, then exits
+  migrate:
+    build:
+      context: .
+      target: migrate
+    image: mlist-migrate:latest
+    restart: 'no'
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      target: runtime
+    image: mlist-web:latest
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      NUXT_PUBLIC_SITE_URL: ${NUXT_PUBLIC_SITE_URL:?set NUXT_PUBLIC_SITE_URL}
+      NUXT_BETTER_AUTH_SECRET: ${NUXT_BETTER_AUTH_SECRET:?set NUXT_BETTER_AUTH_SECRET}
+      NUXT_APP_SECRET: ${NUXT_APP_SECRET:?set NUXT_APP_SECRET}
+      NUXT_SNS_TOPIC_ARNS: ${NUXT_SNS_TOPIC_ARNS:-}
+      MLIST_TRUSTED_PROXIES: ${MLIST_TRUSTED_PROXIES:-}
+      MLIST_ALLOW_PRIVATE_TARGETS: ${MLIST_ALLOW_PRIVATE_TARGETS:-false}
+      MLIST_ALLOWED_TARGETS: ${MLIST_ALLOWED_TARGETS:-}
+      MLIST_SMTP_HOST: ${MLIST_SMTP_HOST:-}
+      MLIST_SMTP_PORT: ${MLIST_SMTP_PORT:-587}
+      MLIST_S3_ENDPOINT: ${MLIST_S3_ENDPOINT:-}
+      MLIST_S3_REGION: ${MLIST_S3_REGION:-us-east-1}
+      MLIST_S3_BUCKET: ${MLIST_S3_BUCKET:-mlist}
+      MLIST_S3_ACCESS_KEY_ID: ${MLIST_S3_ACCESS_KEY_ID:-}
+      MLIST_S3_SECRET_ACCESS_KEY: ${MLIST_S3_SECRET_ACCESS_KEY:-}
+      MLIST_S3_PUBLIC_URL: ${MLIST_S3_PUBLIC_URL:-}
+      WORKFLOW_POSTGRES_WORKER_CONCURRENCY: ${WORKFLOW_POSTGRES_WORKER_CONCURRENCY:-10}
+      WORKFLOW_POSTGRES_MAX_POOL_SIZE: ${WORKFLOW_POSTGRES_MAX_POOL_SIZE:-10}
+    ports:
+      - '${WEB_BIND:-127.0.0.1}:${WEB_PORT:-3000}:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Optional self-hosted S3 (enable with --profile storage); point MLIST_S3_* at it
+  s3:
+    profiles: [storage]
+    image: rustfs/rustfs:1.0.4
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${MLIST_S3_ACCESS_KEY_ID:-}
+      RUSTFS_SECRET_KEY: ${MLIST_S3_SECRET_ACCESS_KEY:-}
+      RUSTFS_CONSOLE_ENABLE: 'false'
+    ports:
+      - '${S3_BIND:-127.0.0.1}:${S3_PORT:-9000}:9000'
+    volumes:
+      - s3:/data
+
+volumes:
+  postgres:
+  s3:
