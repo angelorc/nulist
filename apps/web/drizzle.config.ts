@@ -6,6 +6,6 @@ export default defineConfig({
   out: './server/db/migrations',
   schemaFilter: ['public'],
   dbCredentials: {
-    url: process.env.NUXT_DATABASE_URL ?? 'postgres://mlist:mlist@localhost:5442/mlist'
+    url: process.env.NUXT_DATABASE_URL ?? 'postgres://nulist:nulist@localhost:5442/nulist'
   }
 })

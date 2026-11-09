@@ -15,7 +15,7 @@ const props = defineProps<{
 
 const open = ref(false)
 const { user } = useUserSession()
-const lastAddress = useLocalStorage('mlist:test-email', '')
+const lastAddress = useLocalStorage('nulist:test-email', '')
 const state = reactive<TemplateTestInput>({ to: lastAddress.value || user.value?.email || '' })
 const notify = useNotify()
 

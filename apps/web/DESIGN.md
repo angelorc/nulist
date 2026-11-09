@@ -1,6 +1,6 @@
-# mlist — Design System
+# nulist — Design System
 
-The single source of truth for how mlist looks and behaves. Every new screen must follow it.
+The single source of truth for how nulist looks and behaves. Every new screen must follow it.
 Direction: **calm, dense, monochrome + one accent**. Structure is felt, not seen.
 
 ---

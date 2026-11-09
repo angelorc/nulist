@@ -1,4 +1,4 @@
-export { Mlist, type MlistOptions } from './mlist'
+export { Nulist, type NulistOptions } from './nulist'
 
 export {
   API_ERROR_NAMES,
@@ -7,7 +7,7 @@ export {
   type ClientErrorName,
   type ErrorName,
   type ErrorResponse,
-  type MlistErrorName
+  type NulistErrorName
 } from './core/errors'
 
 export { HttpClient, type FetchFunction, type HttpClientConfig } from './core/http-client'
@@ -18,7 +18,7 @@ export type { HeadersInput, IdempotentRequestOptions, RequestOptions } from './c
 
 export { RequestPath, type PathParameters, type QueryParameters } from './core/request-path'
 
-export type { MlistFailure, MlistResponse, MlistSuccess, ResponseHeaders } from './core/response'
+export type { NulistFailure, NulistResponse, NulistSuccess, ResponseHeaders } from './core/response'
 
 export type { QueryRequestOptions, Transport } from './core/transport'
 

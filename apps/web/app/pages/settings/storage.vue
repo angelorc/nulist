@@ -69,7 +69,7 @@ function examplePublicUrl(
         <UFormField label="Bucket" name="bucket" required>
           <UInput
             v-model="state.bucket"
-            placeholder="mlist"
+            placeholder="nulist"
             spellcheck="false"
             class="w-full"
             :ui="{ base: 'font-mono' }"

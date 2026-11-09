@@ -39,7 +39,7 @@ const TABS = [
 
 const DESCRIPTIONS: Record<LogTab, string> = {
   emails:
-    'Every email mlist sent or tried to send, with its delivery timeline and rendered content.',
+    'Every email nulist sent or tried to send, with its delivery timeline and rendered content.',
   api: 'Requests made to the REST API with an API key, including the request and response payloads.',
   events: 'Raw notifications received from Amazon SES through SNS, and how each one was handled.'
 }

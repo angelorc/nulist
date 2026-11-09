@@ -28,7 +28,7 @@ async function onSubmit(event: FormSubmitEvent<WebhookEndpointForm>) {
 <template>
   <UModal
     title="Add endpoint"
-    description="mlist sends a signed POST request to this URL for every subscribed event."
+    description="nulist sends a signed POST request to this URL for every subscribed event."
     :ui="{ content: 'sm:max-w-xl' }"
     @update:open="(v: boolean) => !v && emit('close', null)"
   >
@@ -49,7 +49,7 @@ async function onSubmit(event: FormSubmitEvent<WebhookEndpointForm>) {
           <UInput
             v-model="state.url"
             type="url"
-            placeholder="https://example.com/webhooks/mlist"
+            placeholder="https://example.com/webhooks/nulist"
             class="w-full"
             :ui="{ base: 'font-mono text-[13px]' }"
             autofocus

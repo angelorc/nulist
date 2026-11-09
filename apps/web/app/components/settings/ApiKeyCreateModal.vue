@@ -65,7 +65,7 @@ function finish() {
     :description="
       created
         ? 'This is the only time the full key is shown.'
-        : 'Keys authenticate requests to the mlist REST API.'
+        : 'Keys authenticate requests to the nulist REST API.'
     "
     :dismissible="!created"
     :close="!created"
@@ -98,7 +98,7 @@ function finish() {
           color="warning"
           icon="i-lucide-triangle-alert"
           title="Store it somewhere safe"
-          description="mlist keeps only a hash. If you lose the key, revoke it and create a new one. Never put it in browser code or a public repository."
+          description="nulist keeps only a hash. If you lose the key, revoke it and create a new one. Never put it in browser code or a public repository."
         />
         <UCheckbox v-model="acknowledged" label="I have copied the key" />
       </div>

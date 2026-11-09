@@ -1,6 +1,6 @@
 import type { RequestOptions } from '../core/request-options'
 import { RequestPath } from '../core/request-path'
-import type { MlistResponse } from '../core/response'
+import type { NulistResponse } from '../core/response'
 import type { Transport } from '../core/transport'
 import type { DeletedResource, Page, PageParams } from '../types/common'
 import type { CreateListOptions, MailingList, UpdateListOptions } from '../types/lists'
@@ -12,7 +12,7 @@ export class Lists {
   create(
     payload: CreateListOptions,
     options: RequestOptions = {}
-  ): Promise<MlistResponse<MailingList>> {
+  ): Promise<NulistResponse<MailingList>> {
     return this.transport.post<MailingList, CreateListOptions>(
       RequestPath.of('/lists'),
       payload,
@@ -20,7 +20,7 @@ export class Lists {
     )
   }
 
-  get(id: string, options: RequestOptions = {}): Promise<MlistResponse<MailingList>> {
+  get(id: string, options: RequestOptions = {}): Promise<NulistResponse<MailingList>> {
     return this.transport.get<MailingList>(RequestPath.of('/lists/{id}', { id }), options)
   }
 
@@ -28,7 +28,7 @@ export class Lists {
   list(
     params: PageParams = {},
     options: RequestOptions = {}
-  ): Promise<MlistResponse<Page<MailingList>>> {
+  ): Promise<NulistResponse<Page<MailingList>>> {
     return this.transport.get<Page<MailingList>>(RequestPath.of('/lists'), {
       ...options,
       query: { page: params.page, pageSize: params.pageSize }
@@ -39,7 +39,7 @@ export class Lists {
     id: string,
     payload: UpdateListOptions,
     options: RequestOptions = {}
-  ): Promise<MlistResponse<MailingList>> {
+  ): Promise<NulistResponse<MailingList>> {
     return this.transport.patch<MailingList, UpdateListOptions>(
       RequestPath.of('/lists/{id}', { id }),
       payload,
@@ -51,7 +51,7 @@ export class Lists {
   remove(
     id: string,
     options: RequestOptions = {}
-  ): Promise<MlistResponse<DeletedResource<'mailing_list'>>> {
+  ): Promise<NulistResponse<DeletedResource<'mailing_list'>>> {
     return this.transport.delete<DeletedResource<'mailing_list'>>(
       RequestPath.of('/lists/{id}', { id }),
       options

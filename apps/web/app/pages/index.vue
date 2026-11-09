@@ -100,7 +100,7 @@ const secondaryKpis = computed(() => kpis.value.filter((k) => SECONDARY_KPIS.has
 
 /** Hiding the checklist is remembered per organization: each one has its own first steps. */
 const dismissed = useLocalStorage(
-  () => `mlist:onboarding-dismissed:${organizationId.value}`,
+  () => `nulist:onboarding-dismissed:${organizationId.value}`,
   false,
   { initOnMounted: true }
 )

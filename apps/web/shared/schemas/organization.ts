@@ -9,7 +9,7 @@ export { limitSettingsSchema }
  * answers 409 `organization_changed` when the session's active organization
  * differs (switched in another tab), so a stale tab never writes elsewhere.
  */
-export const ACTIVE_ORGANIZATION_HEADER = 'x-mlist-organization'
+export const ACTIVE_ORGANIZATION_HEADER = 'x-nulist-organization'
 
 /** Error code of that 409. */
 export const ORGANIZATION_CHANGED = 'organization_changed'

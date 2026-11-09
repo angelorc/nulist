@@ -10,7 +10,7 @@ export interface EnvDefaults {
   s3AccessKeyId: string
   s3SecretAccessKey: string
   s3PublicUrl: string
-  /** Limits every organization starts with (MLIST_DEFAULT_*); 0 = unlimited. */
+  /** Limits every organization starts with (NULIST_DEFAULT_*); 0 = unlimited. */
   limits: Partial<LimitSettings>
 }
 
@@ -32,7 +32,7 @@ export function generalDefaults(organizationName?: string): GeneralSettings {
   const name = organizationName?.trim()
 
   return {
-    appName: name || 'mlist',
+    appName: name || 'nulist',
     companyName: name || 'Acme Inc.',
     companyAddress: '',
     defaultFromName: name || 'Acme',

@@ -5,13 +5,13 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": ["MLIST_*", "WORKFLOW_*"],
+      "env": ["NULIST_*", "WORKFLOW_*"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".output/**", "dist/**"]
     },
     "dev": {
       "dependsOn": ["^build"],
-      "env": ["MLIST_*", "WORKFLOW_*"],
+      "env": ["NULIST_*", "WORKFLOW_*"],
       "cache": false,
       "persistent": true
     },
@@ -20,11 +20,11 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "env": ["MLIST_*", "WORKFLOW_*"],
+      "env": ["NULIST_*", "WORKFLOW_*"],
       "cache": false
     },
     "db:migrate": {
-      "env": ["MLIST_*"],
+      "env": ["NULIST_*"],
       "cache": false
     },
     "//#lint": {},

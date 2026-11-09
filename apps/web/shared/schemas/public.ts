@@ -130,7 +130,7 @@ export interface PublicBrand {
 
 /** Shown when no organization is known (invalid or expired links, network errors). */
 export const NEUTRAL_PUBLIC_BRAND: Readonly<PublicBrand> = Object.freeze({
-  appName: 'mlist',
+  appName: 'nulist',
   companyName: '',
   companyAddress: '',
   logo: null

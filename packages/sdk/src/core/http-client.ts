@@ -3,7 +3,7 @@ import type { ErrorResponse } from './errors'
 import { parseJson } from './json'
 import type { HeadersInput, IdempotentRequestOptions, RequestOptions } from './request-options'
 import type { RequestPath } from './request-path'
-import type { MlistResponse, ResponseHeaders } from './response'
+import type { NulistResponse, ResponseHeaders } from './response'
 import type { QueryRequestOptions, Transport } from './transport'
 
 /** The part of `fetch` the SDK uses; the global `fetch` satisfies it. */
@@ -64,7 +64,7 @@ function responseHeaders(response: Response): ResponseHeaders {
   return headers
 }
 
-function failure(error: ErrorResponse, headers: ResponseHeaders | null): MlistResponse<never> {
+function failure(error: ErrorResponse, headers: ResponseHeaders | null): NulistResponse<never> {
   return { data: null, error, headers }
 }
 
@@ -77,7 +77,7 @@ function failure(error: ErrorResponse, headers: ResponseHeaders | null): MlistRe
 export class HttpClient implements Transport {
   constructor(private readonly config: HttpClientConfig) {}
 
-  get<T>(path: RequestPath, options: QueryRequestOptions = {}): Promise<MlistResponse<T>> {
+  get<T>(path: RequestPath, options: QueryRequestOptions = {}): Promise<NulistResponse<T>> {
     return this.send<T>({
       method: 'GET',
       path,
@@ -91,7 +91,7 @@ export class HttpClient implements Transport {
     path: RequestPath,
     payload?: P,
     options: IdempotentRequestOptions = {}
-  ): Promise<MlistResponse<T>> {
+  ): Promise<NulistResponse<T>> {
     return this.send<T>({
       method: 'POST',
       path,
@@ -105,7 +105,7 @@ export class HttpClient implements Transport {
     path: RequestPath,
     payload: P,
     options: RequestOptions = {}
-  ): Promise<MlistResponse<T>> {
+  ): Promise<NulistResponse<T>> {
     return this.send<T>({
       method: 'PATCH',
       path,
@@ -115,7 +115,7 @@ export class HttpClient implements Transport {
     })
   }
 
-  delete<T>(path: RequestPath, options: RequestOptions = {}): Promise<MlistResponse<T>> {
+  delete<T>(path: RequestPath, options: RequestOptions = {}): Promise<NulistResponse<T>> {
     return this.send<T>({
       method: 'DELETE',
       path,
@@ -185,13 +185,13 @@ export class HttpClient implements Transport {
     return ErrorResponses.client(
       'application_error',
       status === null
-        ? `Unable to reach the mlist API: ${describe(cause)}.`
-        : `The mlist API response could not be read: ${describe(cause)}.`,
+        ? `Unable to reach the nulist API: ${describe(cause)}.`
+        : `The nulist API response could not be read: ${describe(cause)}.`,
       status
     )
   }
 
-  private async send<T>(outgoing: Outgoing): Promise<MlistResponse<T>> {
+  private async send<T>(outgoing: Outgoing): Promise<NulistResponse<T>> {
     if (outgoing.path.problem) return failure(outgoing.path.problem, null)
     const prepared = this.prepare(outgoing)
 
@@ -223,14 +223,14 @@ export class HttpClient implements Transport {
       return failure(
         ErrorResponses.client(
           'application_error',
-          'The mlist API answered with a body that is not JSON.',
+          'The nulist API answered with a body that is not JSON.',
           response.status
         ),
         headers
       )
     }
 
-    // SAFETY: a 2xx body of the mlist API is the resource the endpoint documents as `T`; the
+    // SAFETY: a 2xx body of the nulist API is the resource the endpoint documents as `T`; the
     // SDK's response types are checked against the server's by apps/web/tests/contracts.
     return { data: body as T, error: null, headers }
   }

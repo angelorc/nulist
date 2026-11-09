@@ -1,20 +1,20 @@
-name: mlist
+name: nulist
 
 services:
   postgres:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: mlist
-      POSTGRES_PASSWORD: mlist
-      POSTGRES_DB: mlist
+      POSTGRES_USER: nulist
+      POSTGRES_PASSWORD: nulist
+      POSTGRES_DB: nulist
     ports:
       - '127.0.0.1:5442:5432'
     volumes:
       - postgres:/var/lib/postgresql
       - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U mlist -d mlist']
+      test: ['CMD-SHELL', 'pg_isready -U nulist -d nulist']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -32,8 +32,8 @@ services:
     image: rustfs/rustfs:1.0.4
     restart: unless-stopped
     environment:
-      RUSTFS_ACCESS_KEY: mlist
-      RUSTFS_SECRET_KEY: mlist-secret
+      RUSTFS_ACCESS_KEY: nulist
+      RUSTFS_SECRET_KEY: nulist-secret
       RUSTFS_CONSOLE_ENABLE: 'true'
     ports:
       - '127.0.0.1:9000:9000'

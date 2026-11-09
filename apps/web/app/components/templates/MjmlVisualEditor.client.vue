@@ -534,7 +534,7 @@ onMounted(async () => {
     if (selected && !keepTab && rightTab.value === 'content') rightTab.value = 'style'
   })
 
-  instance.Keymaps.add('mlist:save', '⌘+s, ctrl+s', () => emit('save'), { prevent: true })
+  instance.Keymaps.add('nulist:save', '⌘+s, ctrl+s', () => emit('save'), { prevent: true })
 
   instance.on('load', () => {
     headMjml = null
@@ -564,7 +564,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="mlist-gjs relative flex h-full min-h-0">
+  <div class="nulist-gjs relative flex h-full min-h-0">
     <!-- Left rail: blocks & layers (a drawer below xl; GrapesJS renders into these nodes). -->
     <aside
       id="gjs-left-rail"
@@ -750,7 +750,7 @@ onBeforeUnmount(() => {
 
 <style>
 /* GrapesJS themed with the app tokens (DESIGN.md): hairlines, neutral surfaces, blue accent. */
-.mlist-gjs {
+.nulist-gjs {
   --gjs-main-color: var(--ui-bg);
   --gjs-primary-color: var(--ui-bg);
   --gjs-secondary-color: var(--ui-text);
@@ -777,36 +777,36 @@ onBeforeUnmount(() => {
   --gjs-color-input-padding: 26px;
 }
 
-.mlist-gjs .gjs-editor {
+.nulist-gjs .gjs-editor {
   font-family: var(--font-sans);
   background: transparent;
   color: var(--ui-text);
 }
-.mlist-gjs .gjs-one-bg {
+.nulist-gjs .gjs-one-bg {
   background-color: var(--ui-bg);
 }
-.mlist-gjs .gjs-two-color {
+.nulist-gjs .gjs-two-color {
   color: var(--ui-text);
 }
-.mlist-gjs .gjs-four-color,
-.mlist-gjs .gjs-four-color-h:hover {
+.nulist-gjs .gjs-four-color,
+.nulist-gjs .gjs-four-color-h:hover {
   color: var(--ui-primary);
 }
-.mlist-gjs .gjs-cv-canvas {
+.nulist-gjs .gjs-cv-canvas {
   width: 100%;
   height: 100%;
   top: 0;
   background: var(--ui-bg-muted);
 }
-.mlist-gjs .gjs-frame-wrapper {
+.nulist-gjs .gjs-frame-wrapper {
   padding: 0;
 }
-.mlist-gjs .gjs-frame {
+.nulist-gjs .gjs-frame {
   background: #fff;
 }
 
 /* Canvas tools */
-.mlist-gjs .gjs-badge {
+.nulist-gjs .gjs-badge {
   background: var(--ui-primary);
   color: var(--ui-bg);
   border-radius: 4px;
@@ -814,38 +814,38 @@ onBeforeUnmount(() => {
   padding: 1px 6px;
   box-shadow: none;
 }
-.mlist-gjs .gjs-toolbar {
+.nulist-gjs .gjs-toolbar {
   background: var(--ui-primary);
   border-radius: 4px;
   overflow: hidden;
 }
-.mlist-gjs .gjs-toolbar-item {
+.nulist-gjs .gjs-toolbar-item {
   width: 24px;
   padding: 4px;
 }
-.mlist-gjs .gjs-toolbar-item:hover {
+.nulist-gjs .gjs-toolbar-item:hover {
   background: rgb(0 0 0 / 0.15);
 }
-.mlist-gjs .gjs-resizer-h {
+.nulist-gjs .gjs-resizer-h {
   border-color: var(--ui-primary);
   border-width: 2px;
 }
-.mlist-gjs .gjs-placeholder-int {
+.nulist-gjs .gjs-placeholder-int {
   box-shadow: none;
 }
 
 /* Rich text toolbar */
-.mlist-gjs .gjs-rte-toolbar {
+.nulist-gjs .gjs-rte-toolbar {
   background: var(--ui-bg);
   border: 1px solid var(--ui-border);
   border-radius: 6px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
   overflow: hidden;
 }
-.mlist-gjs .gjs-rte-actionbar {
+.nulist-gjs .gjs-rte-actionbar {
   display: flex;
 }
-.mlist-gjs .gjs-rte-action {
+.nulist-gjs .gjs-rte-action {
   color: var(--ui-text);
   border-right: 1px solid var(--ui-border);
   min-width: 28px;
@@ -855,29 +855,29 @@ onBeforeUnmount(() => {
   font-size: 13px;
   padding: 0 6px;
 }
-.mlist-gjs .gjs-rte-action:last-child {
+.nulist-gjs .gjs-rte-action:last-child {
   border-right: 0;
 }
-.mlist-gjs .gjs-rte-action:hover,
-.mlist-gjs .gjs-rte-active {
+.nulist-gjs .gjs-rte-action:hover,
+.nulist-gjs .gjs-rte-active {
   background: var(--ui-bg-elevated);
   color: var(--ui-text-highlighted);
 }
 
 /* Blocks */
-.mlist-gjs .gjs-block-categories {
+.nulist-gjs .gjs-block-categories {
   display: flex;
   flex-direction: column;
 }
-.mlist-gjs .gjs-block-category {
+.nulist-gjs .gjs-block-category {
   border-bottom: 1px solid var(--ui-border);
 }
-.mlist-gjs .gjs-block-category.gjs-open {
+.nulist-gjs .gjs-block-category.gjs-open {
   border-bottom: 1px solid var(--ui-border);
 }
-.mlist-gjs .gjs-block-category .gjs-title,
-.mlist-gjs .gjs-sm-sector-title,
-.mlist-gjs .gjs-trait-category .gjs-title {
+.nulist-gjs .gjs-block-category .gjs-title,
+.nulist-gjs .gjs-sm-sector-title,
+.nulist-gjs .gjs-trait-category .gjs-title {
   background: transparent;
   border: 0;
   letter-spacing: 0;
@@ -885,17 +885,17 @@ onBeforeUnmount(() => {
   color: var(--ui-text-highlighted);
   padding: 12px 12px 8px;
 }
-.mlist-gjs .gjs-caret-icon,
-.mlist-gjs .gjs-sm-sector-caret {
+.nulist-gjs .gjs-caret-icon,
+.nulist-gjs .gjs-sm-sector-caret {
   color: var(--ui-text-muted);
 }
-.mlist-gjs .gjs-blocks-c {
+.nulist-gjs .gjs-blocks-c {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   padding: 0 12px 12px;
 }
-.mlist-gjs .gjs-block {
+.nulist-gjs .gjs-block {
   width: auto;
   min-height: 76px;
   margin: 0;
@@ -914,82 +914,82 @@ onBeforeUnmount(() => {
     color 120ms,
     border-color 120ms;
 }
-.mlist-gjs .gjs-block:hover {
+.nulist-gjs .gjs-block:hover {
   background: var(--ui-bg-elevated);
   color: var(--ui-text-highlighted);
   border-color: var(--ui-border-accented);
   box-shadow: none;
 }
-.mlist-gjs .gjs-block__media {
+.nulist-gjs .gjs-block__media {
   margin: 0;
 }
-.mlist-gjs .gjs-block svg {
+.nulist-gjs .gjs-block svg {
   width: 22px;
   height: 22px;
 }
-.mlist-gjs .gjs-block-label {
+.nulist-gjs .gjs-block-label {
   font: 500 12px/16px var(--font-sans);
   color: var(--ui-text);
 }
 
 /* Layers */
-.mlist-gjs .gjs-layer {
+.nulist-gjs .gjs-layer {
   font-weight: 400;
   font-size: 13px;
   color: var(--ui-text);
   background: transparent;
 }
-.mlist-gjs .gjs-layer-item {
+.nulist-gjs .gjs-layer-item {
   background: transparent;
   border-bottom: 0;
   padding-top: 4px;
   padding-bottom: 4px;
 }
-.mlist-gjs .gjs-layer-item:hover,
-.mlist-gjs .gjs-layer.gjs-hovered > .gjs-layer-item {
+.nulist-gjs .gjs-layer-item:hover,
+.nulist-gjs .gjs-layer.gjs-hovered > .gjs-layer-item {
   background: var(--ui-bg-elevated);
 }
-.mlist-gjs .gjs-layer.gjs-selected > .gjs-layer-item {
+.nulist-gjs .gjs-layer.gjs-selected > .gjs-layer-item {
   background: color-mix(in oklab, var(--ui-primary) 12%, transparent);
   color: var(--ui-text-highlighted);
 }
-.mlist-gjs .gjs-layer-name {
+.nulist-gjs .gjs-layer-name {
   padding: 2px 0;
 }
-.mlist-gjs .gjs-layer-count {
+.nulist-gjs .gjs-layer-count {
   color: var(--ui-text-muted);
 }
 
 /* Style manager & traits */
-.mlist-gjs .gjs-sm-sector {
+.nulist-gjs .gjs-sm-sector {
   border-bottom: 1px solid var(--ui-border);
   font-weight: 400;
 }
-.mlist-gjs .gjs-sm-sector.gjs-sm-open {
+.nulist-gjs .gjs-sm-sector.gjs-sm-open {
   border-bottom: 1px solid var(--ui-border);
 }
-.mlist-gjs .gjs-sm-properties {
+.nulist-gjs .gjs-sm-properties {
   padding: 0 8px 12px;
   font-size: 12px;
 }
-.mlist-gjs .gjs-sm-property {
+.nulist-gjs .gjs-sm-property {
   padding: 0 4px;
   margin-bottom: 8px;
 }
-.mlist-gjs .gjs-sm-label,
-.mlist-gjs .gjs-label {
+.nulist-gjs .gjs-sm-label,
+.nulist-gjs .gjs-label {
   color: var(--ui-text-muted);
   font-size: 12px;
   margin: 0 0 4px;
 }
-.mlist-gjs .gjs-sm-label.gjs-four-color {
+.nulist-gjs .gjs-sm-label.gjs-four-color {
   color: var(--ui-primary);
 }
-.mlist-gjs .gjs-field,
-.mlist-gjs .gjs-sm-field.gjs-sm-select,
-.mlist-gjs .gjs-sm-field.gjs-sm-input,
-.mlist-gjs .gjs-sm-field.gjs-sm-integer,
-.mlist-gjs .gjs-sm-field.gjs-sm-color {
+.nulist-gjs .gjs-field,
+.nulist-gjs .gjs-sm-field.gjs-sm-select,
+.nulist-gjs .gjs-sm-field.gjs-sm-input,
+.nulist-gjs .gjs-sm-field.gjs-sm-integer,
+.nulist-gjs .gjs-sm-field.gjs-sm-color {
   background: var(--ui-bg);
   color: var(--ui-text-highlighted);
   border: 1px solid var(--ui-border-accented);
@@ -997,48 +997,48 @@ onBeforeUnmount(() => {
   box-shadow: none;
   min-height: 28px;
 }
-.mlist-gjs .gjs-field:focus-within {
+.nulist-gjs .gjs-field:focus-within {
   border-color: var(--ui-primary);
   box-shadow: 0 0 0 1px var(--ui-primary);
 }
-.mlist-gjs .gjs-field input,
-.mlist-gjs .gjs-field select,
-.mlist-gjs .gjs-field textarea {
+.nulist-gjs .gjs-field input,
+.nulist-gjs .gjs-field select,
+.nulist-gjs .gjs-field textarea {
   color: var(--ui-text-highlighted);
   font: 400 12px/16px var(--font-sans);
 }
-.mlist-gjs .gjs-field select option {
+.nulist-gjs .gjs-field select option {
   background: var(--ui-bg);
   color: var(--ui-text);
 }
-.mlist-gjs .gjs-field-colorp {
+.nulist-gjs .gjs-field-colorp {
   border-left-color: var(--ui-border);
 }
-.mlist-gjs .gjs-field-color-picker {
+.nulist-gjs .gjs-field-color-picker {
   border-radius: 3px;
   box-shadow: inset 0 0 0 1px var(--ui-border);
 }
-.mlist-gjs .gjs-radio-items {
+.nulist-gjs .gjs-radio-items {
   border-radius: 6px;
   overflow: hidden;
 }
-.mlist-gjs .gjs-radio-item {
+.nulist-gjs .gjs-radio-item {
   border-left: 1px solid var(--ui-border);
 }
-.mlist-gjs .gjs-radio-item:hover {
+.nulist-gjs .gjs-radio-item:hover {
   background: var(--ui-bg-elevated);
 }
-.mlist-gjs .gjs-radio-item input:checked + .gjs-radio-item-label {
+.nulist-gjs .gjs-radio-item input:checked + .gjs-radio-item-label {
   background: var(--ui-bg-elevated);
   color: var(--ui-text-highlighted);
 }
-.mlist-gjs .gjs-sm-composite.gjs-sm-field,
-.mlist-gjs .gjs-sm-property.gjs-sm-composite .gjs-sm-properties {
+.nulist-gjs .gjs-sm-composite.gjs-sm-field,
+.nulist-gjs .gjs-sm-property.gjs-sm-composite .gjs-sm-properties {
   background: transparent;
   border: 0;
   padding: 0;
 }
-.mlist-gjs .gjs-sm-property .gjs-sm-btn {
+.nulist-gjs .gjs-sm-property .gjs-sm-btn {
   background: var(--ui-bg-elevated);
   color: var(--ui-text);
   box-shadow: none;
@@ -1046,31 +1046,31 @@ onBeforeUnmount(() => {
   border: 1px solid var(--ui-border);
   border-radius: 6px;
 }
-.mlist-gjs .gjs-sm-layer {
+.nulist-gjs .gjs-sm-layer {
   background: var(--ui-bg-elevated);
 }
-.mlist-gjs .gjs-sm-clear {
+.nulist-gjs .gjs-sm-clear {
   color: var(--ui-text-muted);
 }
-.mlist-gjs .gjs-trt-traits {
+.nulist-gjs .gjs-trt-traits {
   padding: 8px 4px;
   font-size: 12px;
 }
-.mlist-gjs .gjs-trt-trait {
+.nulist-gjs .gjs-trt-trait {
   padding: 4px 8px;
   font-weight: 400;
   flex-direction: column;
   align-items: stretch;
   gap: 4px;
 }
-.mlist-gjs .gjs-trt-trait .gjs-label-wrp {
+.nulist-gjs .gjs-trt-trait .gjs-label-wrp {
   width: 100%;
   min-width: 0;
 }
-.mlist-gjs .gjs-trt-header {
+.nulist-gjs .gjs-trt-header {
   display: none;
 }
-.mlist-gjs .gjs-clm-tags {
+.nulist-gjs .gjs-clm-tags {
   display: none;
 }
 </style>

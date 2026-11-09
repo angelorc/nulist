@@ -17,7 +17,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # The workflow target world is resolved when the server is bundled
 ENV WORKFLOW_TARGET_WORLD=@workflow/world-postgres
-RUN pnpm turbo run build --filter=@mlist/web
+RUN pnpm turbo run build --filter=@nulist/web
 
 # --- One-shot migrations: Drizzle schema + workflow (graphile-worker) tables --
 FROM build AS migrate

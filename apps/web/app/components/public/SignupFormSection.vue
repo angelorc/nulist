@@ -42,12 +42,12 @@ const hostedUrl = computed(() => `${origin.value}/subscribe/${props.list.id}`)
 const snippet = computed(() => {
   const name = props.list.name.replace(/[<>&"]/g, '')
 
-  return `<form action="${origin.value}/api/public/subscribe" method="post" class="mlist-signup">
+  return `<form action="${origin.value}/api/public/subscribe" method="post" class="nulist-signup">
   <input type="hidden" name="listId" value="${props.list.id}">
-  <label for="mlist-email">Email</label>
-  <input id="mlist-email" type="email" name="email" required autocomplete="email" placeholder="you@example.com">
-  <label for="mlist-first-name">First name (optional)</label>
-  <input id="mlist-first-name" type="text" name="firstName" autocomplete="given-name">
+  <label for="nulist-email">Email</label>
+  <input id="nulist-email" type="email" name="email" required autocomplete="email" placeholder="you@example.com">
+  <label for="nulist-first-name">First name (optional)</label>
+  <input id="nulist-first-name" type="text" name="firstName" autocomplete="given-name">
   <div style="position:absolute;left:-9999px" aria-hidden="true">
     <input type="text" name="website" tabindex="-1" autocomplete="off">
   </div>

@@ -5,7 +5,7 @@
 {$NUXT_PUBLIC_SITE_URL} {
 	encode zstd gzip
 
-	# Caddy sets X-Forwarded-For/-Proto/-Host; trust it via MLIST_TRUSTED_PROXIES.
+	# Caddy sets X-Forwarded-For/-Proto/-Host; trust it via NULIST_TRUSTED_PROXIES.
 	reverse_proxy web:3000
 
 	log {

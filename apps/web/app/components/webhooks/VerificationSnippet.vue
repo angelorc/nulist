@@ -1,15 +1,15 @@
 <script setup lang="ts">
-/** How a receiver verifies mlist's Standard Webhooks signatures: a Node.js example and the headers. */
+/** How a receiver verifies nulist's Standard Webhooks signatures: a Node.js example and the headers. */
 const install = 'npm install standardwebhooks'
 
 const nodeExample = `import express from 'express'
 import { Webhook } from 'standardwebhooks'
 
 const app = express()
-const webhook = new Webhook(process.env.MLIST_WEBHOOK_SECRET) // whsec_…
+const webhook = new Webhook(process.env.NULIST_WEBHOOK_SECRET) // whsec_…
 
 // Verify the raw body: parsing JSON first changes the bytes that were signed.
-app.post('/webhooks/mlist', express.raw({ type: 'application/json' }), (req, res) => {
+app.post('/webhooks/nulist', express.raw({ type: 'application/json' }), (req, res) => {
   let event
   try {
     event = webhook.verify(req.body, req.headers)

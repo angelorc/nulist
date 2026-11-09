@@ -5,7 +5,7 @@ import type { JsonObject } from '../../../shared/types/domain'
 /**
  * Typed model of Amazon SES event publishing payloads (configuration set →
  * SNS event destination). Schemas are loose: unknown fields are kept, only
- * the fields mlist relies on are validated.
+ * the fields nulist relies on are validated.
  * @see https://docs.aws.amazon.com/ses/latest/dg/event-publishing-retrieving-sns-contents.html
  */
 

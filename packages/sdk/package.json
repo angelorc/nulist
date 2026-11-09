@@ -1,7 +1,7 @@
 {
-  "name": "@mlist/sdk",
+  "name": "@nulist/sdk",
   "version": "0.1.0",
-  "description": "TypeScript SDK for the mlist REST API",
+  "description": "TypeScript SDK for the nulist REST API",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,

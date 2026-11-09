@@ -25,7 +25,7 @@ const steps = [
     avatar: { text: '1' },
     title: 'Create a configuration set',
     description:
-      'In the SES console, open Configuration sets and create one for mlist (or reuse yours). Enter its name in Settings → Sending so every email is tagged with it.'
+      'In the SES console, open Configuration sets and create one for nulist (or reuse yours). Enter its name in Settings → Sending so every email is tagged with it.'
   },
   {
     avatar: { text: '2' },
@@ -38,13 +38,13 @@ const steps = [
     avatar: { text: '3' },
     title: 'Subscribe this endpoint',
     description:
-      'In Amazon SNS, open the topic and create a subscription with protocol HTTPS and the endpoint URL above. mlist confirms the subscription automatically.'
+      'In Amazon SNS, open the topic and create a subscription with protocol HTTPS and the endpoint URL above. nulist confirms the subscription automatically.'
   },
   {
     avatar: { text: '4' },
     title: 'Enable signature version 2',
     description:
-      'Edit the topic and set the signature version to 2 (SHA256). mlist verifies the signature and certificate of every message and rejects anything else.'
+      'Edit the topic and set the signature version to 2 (SHA256). nulist verifies the signature and certificate of every message and rejects anything else.'
   }
 ] satisfies TimelineItem[]
 </script>

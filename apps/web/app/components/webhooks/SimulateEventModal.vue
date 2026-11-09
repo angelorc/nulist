@@ -69,7 +69,7 @@ async function onSubmit(event: FormSubmitEvent<SimulateSesEventInput>) {
           label="Message ID"
           name="messageId"
           required
-          help="The mlist message ID, shown in the message log."
+          help="The nulist message ID, shown in the message log."
         >
           <UInput
             v-model="state.messageId"

@@ -28,7 +28,7 @@ import { RecordingEmailProvider } from './RecordingEmailProvider'
 export type BroadcastDraft = z.input<typeof broadcastCreateSchema>
 
 /** Public base URL of recipient links in tests. */
-export const TEST_APP_URL = 'http://mlist.test'
+export const TEST_APP_URL = 'http://nulist.test'
 
 /** Instance-wide secrets and defaults of the test platform (never the dev ones). */
 const TEST_CONFIG: AppConfig = {
@@ -44,7 +44,7 @@ const TEST_CONFIG: AppConfig = {
     smtpPort: 2525,
     s3Endpoint: 'https://s3.instance.test',
     s3Region: 'us-east-1',
-    s3Bucket: 'mlist-test',
+    s3Bucket: 'nulist-test',
     s3AccessKeyId: 'instance-key',
     s3SecretAccessKey: 'instance-secret',
     s3PublicUrl: 'https://cdn.instance.test',

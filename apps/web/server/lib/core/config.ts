@@ -7,16 +7,16 @@ type Env = Readonly<Record<string, string | undefined>>
 
 /** Env variable per limit: the limits every new organization starts with. */
 const LIMIT_ENV: readonly (readonly [keyof LimitSettings, string])[] = [
-  ['maxContacts', 'MLIST_DEFAULT_MAX_CONTACTS'],
-  ['maxLists', 'MLIST_DEFAULT_MAX_LISTS'],
-  ['maxSegments', 'MLIST_DEFAULT_MAX_SEGMENTS'],
-  ['maxTemplates', 'MLIST_DEFAULT_MAX_TEMPLATES'],
-  ['dailySendLimit', 'MLIST_DEFAULT_DAILY_SEND_LIMIT'],
-  ['monthlySendLimit', 'MLIST_DEFAULT_MONTHLY_SEND_LIMIT'],
-  ['maxImportRows', 'MLIST_DEFAULT_MAX_IMPORT_ROWS'],
-  ['maxFileSizeMb', 'MLIST_DEFAULT_MAX_FILE_SIZE_MB'],
-  ['maxStorageMb', 'MLIST_DEFAULT_MAX_STORAGE_MB'],
-  ['apiRequestsPerMinute', 'MLIST_DEFAULT_API_REQUESTS_PER_MINUTE']
+  ['maxContacts', 'NULIST_DEFAULT_MAX_CONTACTS'],
+  ['maxLists', 'NULIST_DEFAULT_MAX_LISTS'],
+  ['maxSegments', 'NULIST_DEFAULT_MAX_SEGMENTS'],
+  ['maxTemplates', 'NULIST_DEFAULT_MAX_TEMPLATES'],
+  ['dailySendLimit', 'NULIST_DEFAULT_DAILY_SEND_LIMIT'],
+  ['monthlySendLimit', 'NULIST_DEFAULT_MONTHLY_SEND_LIMIT'],
+  ['maxImportRows', 'NULIST_DEFAULT_MAX_IMPORT_ROWS'],
+  ['maxFileSizeMb', 'NULIST_DEFAULT_MAX_FILE_SIZE_MB'],
+  ['maxStorageMb', 'NULIST_DEFAULT_MAX_STORAGE_MB'],
+  ['apiRequestsPerMinute', 'NULIST_DEFAULT_API_REQUESTS_PER_MINUTE']
 ]
 
 /** Non-negative integer from the environment, or undefined when unset or invalid. */
@@ -61,25 +61,25 @@ export function loadAppConfig(env: Env = process.env): AppConfig {
 
   return {
     databaseUrl:
-      env.NUXT_DATABASE_URL || env.DATABASE_URL || 'postgres://mlist:mlist@localhost:5442/mlist',
+      env.NUXT_DATABASE_URL || env.DATABASE_URL || 'postgres://nulist:nulist@localhost:5442/nulist',
     appSecret,
     appUrl: env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
     snsTopicArns: list(env.NUXT_SNS_TOPIC_ARNS),
-    trustedProxies: list(env.MLIST_TRUSTED_PROXIES),
+    trustedProxies: list(env.NULIST_TRUSTED_PROXIES),
     outbound: {
-      allowPrivateNetworks: env.MLIST_ALLOW_PRIVATE_TARGETS === 'true',
-      allowedTargets: list(env.MLIST_ALLOWED_TARGETS)
+      allowPrivateNetworks: env.NULIST_ALLOW_PRIVATE_TARGETS === 'true',
+      allowedTargets: list(env.NULIST_ALLOWED_TARGETS)
     },
-    organizationCacheSize: count(env.MLIST_ORGANIZATION_CACHE_SIZE) || 200,
+    organizationCacheSize: count(env.NULIST_ORGANIZATION_CACHE_SIZE) || 200,
     defaults: {
-      smtpHost: env.MLIST_SMTP_HOST || 'localhost',
-      smtpPort: Number(env.MLIST_SMTP_PORT || 1026),
-      s3Endpoint: env.MLIST_S3_ENDPOINT ?? 'http://localhost:9000',
-      s3Region: env.MLIST_S3_REGION || 'us-east-1',
-      s3Bucket: env.MLIST_S3_BUCKET ?? 'mlist',
-      s3AccessKeyId: env.MLIST_S3_ACCESS_KEY_ID ?? 'mlist',
-      s3SecretAccessKey: env.MLIST_S3_SECRET_ACCESS_KEY ?? 'mlist-secret',
-      s3PublicUrl: env.MLIST_S3_PUBLIC_URL ?? 'http://localhost:9000/mlist',
+      smtpHost: env.NULIST_SMTP_HOST || 'localhost',
+      smtpPort: Number(env.NULIST_SMTP_PORT || 1026),
+      s3Endpoint: env.NULIST_S3_ENDPOINT ?? 'http://localhost:9000',
+      s3Region: env.NULIST_S3_REGION || 'us-east-1',
+      s3Bucket: env.NULIST_S3_BUCKET ?? 'nulist',
+      s3AccessKeyId: env.NULIST_S3_ACCESS_KEY_ID ?? 'nulist',
+      s3SecretAccessKey: env.NULIST_S3_SECRET_ACCESS_KEY ?? 'nulist-secret',
+      s3PublicUrl: env.NULIST_S3_PUBLIC_URL ?? 'http://localhost:9000/nulist',
       limits: limitDefaults(env)
     }
   }

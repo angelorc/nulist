@@ -5,7 +5,7 @@ import { BlockList, isIP } from 'node:net'
  * (server/middleware/client-address.ts overwrites whatever a client sends).
  * Better Auth reads it for its rate limits and session records.
  */
-export const CLIENT_IP_HEADER = 'x-mlist-client-ip'
+export const CLIENT_IP_HEADER = 'x-nulist-client-ip'
 
 const IPV4_MAPPED = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i
 
@@ -27,7 +27,7 @@ export class ClientAddressResolver {
   private readonly proxies = new BlockList()
   private readonly hasProxies: boolean
 
-  /** `trustedProxies`: IPs or CIDR ranges of the reverse proxies in front of mlist, or `loopback`. */
+  /** `trustedProxies`: IPs or CIDR ranges of the reverse proxies in front of nulist, or `loopback`. */
   constructor(trustedProxies: readonly string[]) {
     let added = 0
 

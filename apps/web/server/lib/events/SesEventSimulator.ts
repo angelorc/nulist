@@ -14,7 +14,7 @@ import type { TenantScope } from '../core/TenantScope'
 
 type MessageRow = typeof messages.$inferSelect
 
-const SIMULATOR_TOPIC = 'arn:aws:sns:local:000000000000:mlist-simulator'
+const SIMULATOR_TOPIC = 'arn:aws:sns:local:000000000000:nulist-simulator'
 
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15'
@@ -178,7 +178,7 @@ export class SesEventSimulator {
       ['message_id', [message.id]],
       ['organization_id', [message.organizationId]],
       ['kind', [message.kind]],
-      ['ses:configuration-set', ['mlist']]
+      ['ses:configuration-set', ['nulist']]
     ]
 
     if (message.broadcastId) tags.push(['broadcast_id', [message.broadcastId]])

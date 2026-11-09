@@ -19,7 +19,7 @@ export interface SesProcessResult {
   status: SesProcessStatus
   /** Why the event was ignored or failed (safe to show to members). */
   reason?: string
-  /** mlist message the event was correlated with. */
+  /** nulist message the event was correlated with. */
   messageId?: string | null
   /** The failure is transient: the sender (SNS) should deliver the message again. */
   retryable?: boolean
@@ -158,7 +158,7 @@ export class SesEventProcessor {
 
       return SesEventProcessor.unrouted(
         event.eventType === 'Send'
-          ? 'Send events are recorded by mlist when the email is handed to SES'
+          ? 'Send events are recorded by nulist when the email is handed to SES'
           : 'SES subscription management events are not used'
       )
     }
@@ -172,7 +172,7 @@ export class SesEventProcessor {
       )
     }
 
-    if (!message) return SesEventProcessor.unrouted('Message not found (not sent by mlist)')
+    if (!message) return SesEventProcessor.unrouted('Message not found (not sent by nulist)')
 
     return this.applyIn(tx, message.organizationId, event, message)
   }
@@ -190,7 +190,7 @@ export class SesEventProcessor {
   }
 
   /**
-   * Finds (and locks) the mlist message across every organization: our
+   * Finds (and locks) the nulist message across every organization: our
    * `message_id` tag first, then the SES message id. A tagged message that SES
    * already identified under another message id is not this event's message.
    */

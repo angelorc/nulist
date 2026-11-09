@@ -1,6 +1,6 @@
 import type { RequestOptions } from '../core/request-options'
 import { RequestPath } from '../core/request-path'
-import type { MlistResponse } from '../core/response'
+import type { NulistResponse } from '../core/response'
 import type { Transport } from '../core/transport'
 import type { DeletedResource, Page } from '../types/common'
 import type {
@@ -24,7 +24,7 @@ export class Contacts {
   create(
     payload: CreateContactOptions,
     options: RequestOptions = {}
-  ): Promise<MlistResponse<UpsertedContact>> {
+  ): Promise<NulistResponse<UpsertedContact>> {
     return this.transport.post<UpsertedContact, CreateContactOptions>(
       RequestPath.of('/contacts'),
       payload,
@@ -32,7 +32,7 @@ export class Contacts {
     )
   }
 
-  get(email: string, options: RequestOptions = {}): Promise<MlistResponse<Contact>> {
+  get(email: string, options: RequestOptions = {}): Promise<NulistResponse<Contact>> {
     return this.transport.get<Contact>(RequestPath.of('/contacts/{email}', { email }), options)
   }
 
@@ -40,7 +40,7 @@ export class Contacts {
   list(
     params: ListContactsOptions = {},
     options: RequestOptions = {}
-  ): Promise<MlistResponse<Page<ContactSummary>>> {
+  ): Promise<NulistResponse<Page<ContactSummary>>> {
     return this.transport.get<Page<ContactSummary>>(RequestPath.of('/contacts'), {
       ...options,
       query: {
@@ -58,7 +58,7 @@ export class Contacts {
     email: string,
     payload: UpdateContactOptions,
     options: RequestOptions = {}
-  ): Promise<MlistResponse<Contact>> {
+  ): Promise<NulistResponse<Contact>> {
     return this.transport.patch<Contact, UpdateContactOptions>(
       RequestPath.of('/contacts/{email}', { email }),
       payload,
@@ -70,7 +70,7 @@ export class Contacts {
   remove(
     email: string,
     options: RequestOptions = {}
-  ): Promise<MlistResponse<DeletedResource<'contact'>>> {
+  ): Promise<NulistResponse<DeletedResource<'contact'>>> {
     return this.transport.delete<DeletedResource<'contact'>>(
       RequestPath.of('/contacts/{email}', { email }),
       options
@@ -82,7 +82,7 @@ export class Contacts {
     email: string,
     payload: UnsubscribeContactOptions = {},
     options: RequestOptions = {}
-  ): Promise<MlistResponse<Contact>> {
+  ): Promise<NulistResponse<Contact>> {
     return this.transport.post<Contact, UnsubscribeContactOptions>(
       RequestPath.of('/contacts/{email}/unsubscribe', { email }),
       payload,

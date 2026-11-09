@@ -56,7 +56,7 @@ const EVENT_STEPS: TimelineItem[] = [
     avatar: { text: '3' },
     title: 'Subscribe the SNS topic',
     description:
-      'Subscribe the topic to the mlist SES endpoint over HTTPS. mlist confirms the subscription automatically.'
+      'Subscribe the topic to the nulist SES endpoint over HTTPS. nulist confirms the subscription automatically.'
   },
   {
     value: 4,
@@ -136,7 +136,7 @@ async function onSendTest(event: FormSubmitEvent<TestEmailInput>) {
     <!-- Provider --------------------------------------------------------- -->
     <SettingsCard
       title="Provider"
-      description="How mlist hands email to the internet. Credentials are encrypted at rest."
+      description="How nulist hands email to the internet. Credentials are encrypted at rest."
       v-bind="group(['provider', 'ses', 'smtp'])"
     >
       <UFormField name="provider" label="Send with">
@@ -169,7 +169,7 @@ async function onSendTest(event: FormSubmitEvent<TestEmailInput>) {
           >
             <UInput
               v-model="state.ses.configurationSet"
-              placeholder="mlist-events"
+              placeholder="nulist-events"
               class="w-full"
               :ui="{ base: 'font-mono' }"
             />
@@ -276,7 +276,7 @@ async function onSendTest(event: FormSubmitEvent<TestEmailInput>) {
         >
           <UInput
             v-model="state.smtp.configurationSet"
-            placeholder="mlist-events"
+            placeholder="nulist-events"
             class="w-full"
             :ui="{ base: 'font-mono' }"
           />

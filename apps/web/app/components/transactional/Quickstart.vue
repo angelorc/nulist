@@ -17,7 +17,7 @@ const LANGUAGES = [
   { label: 'Python', value: 'python', icon: 'i-lucide-file-code' }
 ] satisfies TabsItem[]
 
-const stored = useLocalStorage<Language>('mlist:quickstart-language', 'curl', {
+const stored = useLocalStorage<Language>('nulist:quickstart-language', 'curl', {
   initOnMounted: true
 })
 
@@ -47,7 +47,7 @@ const slug = computed(() => selectedSlug.value ?? 'welcome')
 const snippets = computed<Record<Language, string>>(() => ({
   curl: [
     `curl -X POST ${endpoint.value} \\`,
-    `  -H "Authorization: Bearer $MLIST_API_KEY" \\`,
+    `  -H "Authorization: Bearer $NULIST_API_KEY" \\`,
     `  -H "Content-Type: application/json" \\`,
     `  -H "Idempotency-Key: signup-ada-2026-05-01" \\`,
     `  -d '{`,
@@ -60,7 +60,7 @@ const snippets = computed<Record<Language, string>>(() => ({
     `const response = await fetch('${endpoint.value}', {`,
     `  method: 'POST',`,
     `  headers: {`,
-    `    'Authorization': \`Bearer \${process.env.MLIST_API_KEY}\`,`,
+    `    'Authorization': \`Bearer \${process.env.NULIST_API_KEY}\`,`,
     `    'Content-Type': 'application/json',`,
     `    // Retrying with the same key never sends twice (${IDEMPOTENCY_WINDOW_HOURS} hours).`,
     `    'Idempotency-Key': \`signup-\${user.id}\``,
@@ -74,7 +74,7 @@ const snippets = computed<Record<Language, string>>(() => ({
     ``,
     `if (!response.ok) {`,
     `  const { error } = await response.json()`,
-    `  throw new Error(\`mlist: \${error.code}: \${error.message}\`)`,
+    `  throw new Error(\`nulist: \${error.code}: \${error.message}\`)`,
     `}`,
     `const email = await response.json() // { id, status: 'queued', ... }`
   ].join('\n'),
@@ -85,7 +85,7 @@ const snippets = computed<Record<Language, string>>(() => ({
     `response = requests.post(`,
     `    "${endpoint.value}",`,
     `    headers={`,
-    `        "Authorization": f"Bearer {os.environ['MLIST_API_KEY']}",`,
+    `        "Authorization": f"Bearer {os.environ['NULIST_API_KEY']}",`,
     `        # Retrying with the same key never sends twice (${IDEMPOTENCY_WINDOW_HOURS} hours).`,
     `        "Idempotency-Key": f"signup-{user.id}",`,
     `    },`,

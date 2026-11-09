@@ -32,7 +32,7 @@ export class TokenService {
   private readonly key: Uint8Array
 
   constructor(secret: string) {
-    this.key = new TextEncoder().encode(`mlist:tokens:${secret}`)
+    this.key = new TextEncoder().encode(`nulist:tokens:${secret}`)
   }
 
   async sign(

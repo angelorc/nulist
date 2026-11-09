@@ -9,7 +9,7 @@ useHead({
   ],
   link: [{ rel: 'icon', href: '/favicon.ico' }],
   htmlAttrs: { lang: 'en' },
-  titleTemplate: (title) => (title ? `${title} · mlist` : 'mlist')
+  titleTemplate: (title) => (title ? `${title} · nulist` : 'nulist')
 })
 </script>
 

@@ -121,8 +121,8 @@ async function onRemove(row: SuppressionRow) {
   const status = row.contactStatus ? CONTACT_STATUS_NOTE[row.contactStatus] : undefined
 
   const description = status
-    ? `mlist can email this address again. The contact keeps its status (${status}), so broadcasts still skip it until you change the status on the contact.`
-    : 'mlist can email this address again, including broadcasts if it belongs to a contact on your lists.'
+    ? `nulist can email this address again. The contact keeps its status (${status}), so broadcasts still skip it until you change the status on the contact.`
+    : 'nulist can email this address again, including broadcasts if it belongs to a contact on your lists.'
 
   const ok = await confirm({
     title: `Remove ${row.email} from the suppression list?`,
@@ -223,7 +223,7 @@ const columns = computed<TableColumn<SuppressionRow>[]>(() => [
 <template>
   <SettingsCard
     title="Suppression list"
-    description="Addresses mlist never emails. Hard bounces, complaints and global unsubscribes are added automatically from provider events; soft bounces once an address keeps failing."
+    description="Addresses nulist never emails. Hard bounces, complaints and global unsubscribes are added automatically from provider events; soft bounces once an address keeps failing."
     stacked
   >
     <template #headerActions>
@@ -364,7 +364,7 @@ const columns = computed<TableColumn<SuppressionRow>[]>(() => [
   <UModal
     v-model:open="addOpen"
     title="Suppress an address"
-    description="mlist will not send any email to it, including transactional email."
+    description="nulist will not send any email to it, including transactional email."
   >
     <template #body>
       <UForm

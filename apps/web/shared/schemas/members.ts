@@ -29,7 +29,7 @@ export const invitationResponseSchema = z.object({ action: z.enum(['accept', 're
  * Sign-up request header carrying the invitation id from the emailed link. Sign-up is
  * invitation only, and holding the link is what proves the invitee owns the mailbox.
  */
-export const INVITATION_HEADER = 'x-mlist-invitation'
+export const INVITATION_HEADER = 'x-nulist-invitation'
 
 export type InvitationResponseInput = z.infer<typeof invitationResponseSchema>
 

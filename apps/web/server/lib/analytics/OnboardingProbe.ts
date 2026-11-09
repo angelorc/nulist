@@ -26,7 +26,7 @@ type ProbeRow = {
 /**
  * Checks one organization's first-run steps against its own data in a single
  * round trip. A sending domain counts as verified once the provider confirmed a
- * delivery (SES), or once an email went out through SMTP (no domain step in mlist).
+ * delivery (SES), or once an email went out through SMTP (no domain step in nulist).
  */
 export class OnboardingProbe {
   constructor(

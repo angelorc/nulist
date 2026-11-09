@@ -5,24 +5,24 @@
 #   storage  bundled S3-compatible storage (RustFS)
 #
 # Without `caddy`, put your own TLS-terminating proxy in front of WEB_BIND:WEB_PORT.
-# Either way, set MLIST_TRUSTED_PROXIES to the proxy's address so client IPs are read
+# Either way, set NULIST_TRUSTED_PROXIES to the proxy's address so client IPs are read
 # from X-Forwarded-For, and NUXT_PUBLIC_SITE_URL to the public https:// URL.
-name: mlist-prod
+name: nulist-prod
 
 x-app-env: &app-env
   NODE_ENV: production
-  NUXT_DATABASE_URL: postgres://${POSTGRES_USER:-mlist}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mlist}
+  NUXT_DATABASE_URL: postgres://${POSTGRES_USER:-nulist}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nulist}
   WORKFLOW_TARGET_WORLD: '@workflow/world-postgres'
-  WORKFLOW_POSTGRES_URL: postgres://${POSTGRES_USER:-mlist}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mlist}
+  WORKFLOW_POSTGRES_URL: postgres://${POSTGRES_USER:-nulist}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nulist}
 
 services:
   postgres:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-mlist}
+      POSTGRES_USER: ${POSTGRES_USER:-nulist}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-mlist}
+      POSTGRES_DB: ${POSTGRES_DB:-nulist}
     volumes:
       - postgres:/var/lib/postgresql
     healthcheck:
@@ -36,7 +36,7 @@ services:
     build:
       context: .
       target: migrate
-    image: mlist-migrate:latest
+    image: nulist-migrate:latest
     restart: 'no'
     environment: *app-env
     depends_on:
@@ -47,7 +47,7 @@ services:
     build:
       context: .
       target: runtime
-    image: mlist-web:latest
+    image: nulist-web:latest
     restart: unless-stopped
     environment:
       <<: *app-env
@@ -55,17 +55,17 @@ services:
       NUXT_BETTER_AUTH_SECRET: ${NUXT_BETTER_AUTH_SECRET:?set NUXT_BETTER_AUTH_SECRET}
       NUXT_APP_SECRET: ${NUXT_APP_SECRET:?set NUXT_APP_SECRET}
       NUXT_SNS_TOPIC_ARNS: ${NUXT_SNS_TOPIC_ARNS:-}
-      MLIST_TRUSTED_PROXIES: ${MLIST_TRUSTED_PROXIES:-}
-      MLIST_ALLOW_PRIVATE_TARGETS: ${MLIST_ALLOW_PRIVATE_TARGETS:-false}
-      MLIST_ALLOWED_TARGETS: ${MLIST_ALLOWED_TARGETS:-}
-      MLIST_SMTP_HOST: ${MLIST_SMTP_HOST:-}
-      MLIST_SMTP_PORT: ${MLIST_SMTP_PORT:-587}
-      MLIST_S3_ENDPOINT: ${MLIST_S3_ENDPOINT:-}
-      MLIST_S3_REGION: ${MLIST_S3_REGION:-us-east-1}
-      MLIST_S3_BUCKET: ${MLIST_S3_BUCKET:-mlist}
-      MLIST_S3_ACCESS_KEY_ID: ${MLIST_S3_ACCESS_KEY_ID:-}
-      MLIST_S3_SECRET_ACCESS_KEY: ${MLIST_S3_SECRET_ACCESS_KEY:-}
-      MLIST_S3_PUBLIC_URL: ${MLIST_S3_PUBLIC_URL:-}
+      NULIST_TRUSTED_PROXIES: ${NULIST_TRUSTED_PROXIES:-}
+      NULIST_ALLOW_PRIVATE_TARGETS: ${NULIST_ALLOW_PRIVATE_TARGETS:-false}
+      NULIST_ALLOWED_TARGETS: ${NULIST_ALLOWED_TARGETS:-}
+      NULIST_SMTP_HOST: ${NULIST_SMTP_HOST:-}
+      NULIST_SMTP_PORT: ${NULIST_SMTP_PORT:-587}
+      NULIST_S3_ENDPOINT: ${NULIST_S3_ENDPOINT:-}
+      NULIST_S3_REGION: ${NULIST_S3_REGION:-us-east-1}
+      NULIST_S3_BUCKET: ${NULIST_S3_BUCKET:-nulist}
+      NULIST_S3_ACCESS_KEY_ID: ${NULIST_S3_ACCESS_KEY_ID:-}
+      NULIST_S3_SECRET_ACCESS_KEY: ${NULIST_S3_SECRET_ACCESS_KEY:-}
+      NULIST_S3_PUBLIC_URL: ${NULIST_S3_PUBLIC_URL:-}
       WORKFLOW_POSTGRES_WORKER_CONCURRENCY: ${WORKFLOW_POSTGRES_WORKER_CONCURRENCY:-10}
       WORKFLOW_POSTGRES_MAX_POOL_SIZE: ${WORKFLOW_POSTGRES_MAX_POOL_SIZE:-10}
     ports:
@@ -96,14 +96,14 @@ services:
       web:
         condition: service_healthy
 
-  # Optional self-hosted S3 (enable with --profile storage); point MLIST_S3_* at it
+  # Optional self-hosted S3 (enable with --profile storage); point NULIST_S3_* at it
   s3:
     profiles: [storage]
     image: rustfs/rustfs:1.0.4
     restart: unless-stopped
     environment:
-      RUSTFS_ACCESS_KEY: ${MLIST_S3_ACCESS_KEY_ID:-}
-      RUSTFS_SECRET_KEY: ${MLIST_S3_SECRET_ACCESS_KEY:-}
+      RUSTFS_ACCESS_KEY: ${NULIST_S3_ACCESS_KEY_ID:-}
+      RUSTFS_SECRET_KEY: ${NULIST_S3_SECRET_ACCESS_KEY:-}
       RUSTFS_CONSOLE_ENABLE: 'false'
     ports:
       - '${S3_BIND:-127.0.0.1}:${S3_PORT:-9000}:9000'

@@ -10,7 +10,7 @@ export class SecretBox {
   private readonly key: Buffer
 
   constructor(secret: string) {
-    this.key = createHash('sha256').update(`mlist:secret-box:${secret}`).digest()
+    this.key = createHash('sha256').update(`nulist:secret-box:${secret}`).digest()
   }
 
   isEncrypted(value: string): boolean {

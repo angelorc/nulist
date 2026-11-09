@@ -231,6 +231,6 @@ export interface InboundEventListItem {
 /** `GET /api/inbound-events/[id]` as received by the browser. */
 export interface InboundEventDetail extends InboundEventListItem {
   payload: JsonObject
-  /** mlist message the event refers to (our `message_id` SES tag), when present. */
+  /** nulist message the event refers to (our `message_id` SES tag), when present. */
   messageId: string | null
 }

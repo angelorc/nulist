@@ -36,7 +36,7 @@ import { DnsChecker } from './DnsChecker'
 import { DnsRecordPlan } from './DnsRecordPlan'
 import { IdentityOwnership } from './IdentityOwnership'
 
-/** How mail leaves mlist, as far as domain authentication is concerned. */
+/** How mail leaves nulist, as far as domain authentication is concerned. */
 export interface SendingContext {
   /** SES API credentials are available: identities can be listed and created. */
   managed: boolean

@@ -12,7 +12,7 @@ useSeoMeta({ title: 'General settings' })
       v-bind="group(['appName'])"
     >
       <UFormField label="Display name" name="appName" required>
-        <UInput v-model="state.appName" placeholder="mlist" class="w-full" />
+        <UInput v-model="state.appName" placeholder="nulist" class="w-full" />
       </UFormField>
     </SettingsCard>
 

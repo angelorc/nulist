@@ -1,6 +1,6 @@
 import type { IdempotentRequestOptions, RequestOptions } from '../core/request-options'
 import { RequestPath } from '../core/request-path'
-import type { MlistResponse } from '../core/response'
+import type { NulistResponse } from '../core/response'
 import type { Transport } from '../core/transport'
 import type { Page } from '../types/common'
 import type {
@@ -19,7 +19,7 @@ export class Batch {
   send(
     emails: SendEmailOptions[],
     options: IdempotentRequestOptions = {}
-  ): Promise<MlistResponse<EmailBatch>> {
+  ): Promise<NulistResponse<EmailBatch>> {
     return this.transport.post<EmailBatch, SendEmailOptions[]>(
       RequestPath.of('/emails/batch'),
       emails,
@@ -31,7 +31,7 @@ export class Batch {
   create(
     emails: SendEmailOptions[],
     options: IdempotentRequestOptions = {}
-  ): Promise<MlistResponse<EmailBatch>> {
+  ): Promise<NulistResponse<EmailBatch>> {
     return this.send(emails, options)
   }
 }
@@ -48,7 +48,7 @@ export class Emails {
   send(
     payload: SendEmailOptions,
     options: IdempotentRequestOptions = {}
-  ): Promise<MlistResponse<Email>> {
+  ): Promise<NulistResponse<Email>> {
     return this.transport.post<Email, SendEmailOptions>(RequestPath.of('/emails'), payload, options)
   }
 
@@ -56,11 +56,11 @@ export class Emails {
   create(
     payload: SendEmailOptions,
     options: IdempotentRequestOptions = {}
-  ): Promise<MlistResponse<Email>> {
+  ): Promise<NulistResponse<Email>> {
     return this.send(payload, options)
   }
 
-  get(id: string, options: RequestOptions = {}): Promise<MlistResponse<EmailDetail>> {
+  get(id: string, options: RequestOptions = {}): Promise<NulistResponse<EmailDetail>> {
     return this.transport.get<EmailDetail>(RequestPath.of('/emails/{id}', { id }), options)
   }
 
@@ -68,7 +68,7 @@ export class Emails {
   list(
     params: ListEmailsOptions = {},
     options: RequestOptions = {}
-  ): Promise<MlistResponse<Page<Email>>> {
+  ): Promise<NulistResponse<Page<Email>>> {
     return this.transport.get<Page<Email>>(RequestPath.of('/emails'), {
       ...options,
       query: { page: params.page, pageSize: params.pageSize, status: params.status }
@@ -76,7 +76,7 @@ export class Emails {
   }
 
   /** Only `scheduled` emails can be cancelled (`invalid_state` otherwise). */
-  cancel(id: string, options: RequestOptions = {}): Promise<MlistResponse<Email>> {
+  cancel(id: string, options: RequestOptions = {}): Promise<NulistResponse<Email>> {
     return this.transport.post<Email>(
       RequestPath.of('/emails/{id}/cancel', { id }),
       undefined,

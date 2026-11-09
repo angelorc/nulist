@@ -7,7 +7,9 @@ import { admin, organization } from 'better-auth/plugins'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { ac, roles } from '../shared/auth/permissions'
 
-const db = drizzle(process.env.NUXT_DATABASE_URL ?? 'postgres://mlist:mlist@localhost:5442/mlist')
+const db = drizzle(
+  process.env.NUXT_DATABASE_URL ?? 'postgres://nulist:nulist@localhost:5442/nulist'
+)
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: 'pg' }),

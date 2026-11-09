@@ -1,7 +1,7 @@
 import type { Tag } from '@aws-sdk/client-sesv2'
 
 /** SES resource tag that records which organization an identity belongs to. */
-export const ORGANIZATION_TAG = 'mlist:organization-id'
+export const ORGANIZATION_TAG = 'nulist:organization-id'
 
 /** How an organization reaches Amazon SES. */
 export type SesAccountKind =
@@ -12,7 +12,7 @@ export type SesAccountKind =
 
 /**
  * Which SES identities an organization may see and manage. Identities created
- * through mlist carry the organization's id as a tag; an identity tagged for
+ * through nulist carry the organization's id as a tag; an identity tagged for
  * another organization never belongs to this one. Untagged identities (created
  * in the AWS console or before organizations existed) belong to the organization
  * only when it uses its own AWS account, never on the shared instance account.

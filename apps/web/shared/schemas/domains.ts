@@ -192,7 +192,7 @@ export interface DomainIdentity {
 }
 
 export interface DomainOverview {
-  /** SES API credentials are available: identities can be managed from mlist. */
+  /** SES API credentials are available: identities can be managed from nulist. */
   managed: boolean
   /** Mail goes out through Amazon SES (API or SMTP interface). */
   viaSes: boolean

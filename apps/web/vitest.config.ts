@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config'
 
 /**
  * Functional test-suite: services run against a real Postgres database
- * (`mlist_test`, reset and migrated once by the global setup). Files share that
+ * (`nulist_test`, reset and migrated once by the global setup). Files share that
  * database, so they run one at a time in a single forked process.
  */
 export default defineConfig({

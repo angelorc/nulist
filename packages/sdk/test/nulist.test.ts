@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Mlist } from '../src'
+import { Nulist } from '../src'
 import type { FetchFunction, JsonInput } from '../src'
 
 interface RecordedRequest {
@@ -64,8 +64,8 @@ class FakeFetch {
   }
 }
 
-function client(fake: FakeFetch, userAgent?: string): Mlist {
-  return new Mlist('ml_test_key', {
+function client(fake: FakeFetch, userAgent?: string): Nulist {
+  return new Nulist('ml_test_key', {
     baseUrl: 'https://mail.test/api/v1/',
     fetch: fake.fetch,
     userAgent
@@ -110,9 +110,9 @@ describe('error normalisation', () => {
       .json({ error: { code: 'brand_new_code', message: 'Something new' } }, 409)
       .text('<html><body>502 Bad Gateway</body></html>', 502, { 'content-type': 'text/html' })
 
-    const mlist = client(fake)
-    const unknown = await mlist.lists.get('4d0a8a8e-7f43-4b0e-a8a2-1e5b3c9d7f60')
-    const proxy = await mlist.lists.get('4d0a8a8e-7f43-4b0e-a8a2-1e5b3c9d7f60')
+    const nulist = client(fake)
+    const unknown = await nulist.lists.get('4d0a8a8e-7f43-4b0e-a8a2-1e5b3c9d7f60')
+    const proxy = await nulist.lists.get('4d0a8a8e-7f43-4b0e-a8a2-1e5b3c9d7f60')
 
     expect(unknown.error).toEqual({
       name: 'brand_new_code',
@@ -136,7 +136,7 @@ describe('error normalisation', () => {
       data: null,
       error: {
         name: 'application_error',
-        message: 'Unable to reach the mlist API: getaddrinfo ENOTFOUND mail.test.',
+        message: 'Unable to reach the nulist API: getaddrinfo ENOTFOUND mail.test.',
         statusCode: null
       },
       headers: null
@@ -198,7 +198,7 @@ describe('request headers', () => {
     expect(fake.last.init.body).toBeUndefined()
     expect(fake.lastHeaders.has('content-type')).toBe(false)
     expect(fake.lastHeaders.get('x-trace')).toBe('t-2')
-    expect(fake.lastHeaders.get('user-agent')).toMatch(/^mlist-node:\d+\.\d+\.\d+/)
+    expect(fake.lastHeaders.get('user-agent')).toMatch(/^nulist-node:\d+\.\d+\.\d+/)
   })
 })
 
@@ -237,10 +237,10 @@ describe('query and path encoding', () => {
 
   it('refuses empty and dot-segment parameters without sending a request', async () => {
     const fake = new FakeFetch()
-    const mlist = client(fake)
+    const nulist = client(fake)
 
-    const dots = await mlist.templates.update('..', { name: 'Escaped' })
-    const empty = await mlist.broadcasts.send('  ', {})
+    const dots = await nulist.templates.update('..', { name: 'Escaped' })
+    const empty = await nulist.broadcasts.send('  ', {})
 
     expect(dots).toEqual({
       data: null,

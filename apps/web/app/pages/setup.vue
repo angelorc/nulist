@@ -4,7 +4,7 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 
 definePageMeta({ layout: 'auth' })
 
-useSeoMeta({ title: 'Set up mlist' })
+useSeoMeta({ title: 'Set up nulist' })
 
 const { data: setup } = await useFetch('/api/setup')
 

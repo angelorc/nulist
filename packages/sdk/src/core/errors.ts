@@ -1,7 +1,7 @@
 import { isJsonObject, isJsonString } from './json'
 import type { JsonObject, JsonValue } from './json'
 
-/** Codes the mlist API sends in `error.code`. */
+/** Codes the nulist API sends in `error.code`. */
 export const API_ERROR_NAMES = [
   'missing_api_key',
   'invalid_authorization_header',
@@ -46,13 +46,13 @@ export type ApiErrorName = (typeof API_ERROR_NAMES)[number]
 
 export type ClientErrorName = (typeof CLIENT_ERROR_NAMES)[number]
 
-export type MlistErrorName = ApiErrorName | ClientErrorName
+export type NulistErrorName = ApiErrorName | ClientErrorName
 
 /**
  * The codes this SDK version knows, plus any newer code the API sends (passed
  * through unchanged instead of being collapsed into `application_error`).
  */
-export type ErrorName = MlistErrorName | (string & {})
+export type ErrorName = NulistErrorName | (string & {})
 
 /** What every failed call resolves to (`{ data: null, error }`); the SDK never throws or rejects. */
 export interface ErrorResponse {
@@ -106,7 +106,7 @@ export class ErrorResponses {
       const message =
         status >= 500
           ? 'Internal server error. We are unable to process your request right now, please try again later.'
-          : statusText || `Unexpected ${status} response from the mlist API.`
+          : statusText || `Unexpected ${status} response from the nulist API.`
 
       return ErrorResponses.client('application_error', message, status)
     }

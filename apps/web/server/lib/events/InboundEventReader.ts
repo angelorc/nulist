@@ -18,7 +18,7 @@ export interface InboundEventQuery {
 /** First recipient of the SES mail object. */
 const recipient = sql<string | null>`${inboundEvents.payload}->'mail'->'destination'->>0`
 
-/** mlist message the event refers to (our `message_id` SES tag). */
+/** nulist message the event refers to (our `message_id` SES tag). */
 const taggedMessageId = sql<
   string | null
 >`${inboundEvents.payload}->'mail'->'tags'->'message_id'->>0`

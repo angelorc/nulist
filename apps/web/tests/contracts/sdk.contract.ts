@@ -1,12 +1,12 @@
 /**
- * Compile-time contract between `@mlist/sdk` and the REST API v1, checked by
+ * Compile-time contract between `@nulist/sdk` and the REST API v1, checked by
  * `nuxi typecheck` (this folder's tsconfig is referenced by the app's). For
  * every endpoint:
  * - the SDK's request type is accepted by the route's zod schema (`z.input`);
  * - what the server's v1 resource resolves to is assignable to the SDK's response type.
  * Nothing here runs: a drift fails the type check.
  */
-import type * as Sdk from '@mlist/sdk'
+import type * as Sdk from '@nulist/sdk'
 import type { z } from 'zod'
 import type { BroadcastApi } from '../../server/lib/api/BroadcastApi'
 import type { ContactApi } from '../../server/lib/api/ContactApi'

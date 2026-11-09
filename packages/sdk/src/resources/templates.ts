@@ -1,6 +1,6 @@
 import type { RequestOptions } from '../core/request-options'
 import { RequestPath } from '../core/request-path'
-import type { MlistResponse } from '../core/response'
+import type { NulistResponse } from '../core/response'
 import type { Transport } from '../core/transport'
 import type { DeletedResource, Page } from '../types/common'
 import type {
@@ -19,7 +19,7 @@ export class Templates {
   create(
     payload: CreateTemplateOptions,
     options: RequestOptions = {}
-  ): Promise<MlistResponse<SavedTemplate>> {
+  ): Promise<NulistResponse<SavedTemplate>> {
     return this.transport.post<SavedTemplate, CreateTemplateOptions>(
       RequestPath.of('/templates'),
       payload,
@@ -27,7 +27,7 @@ export class Templates {
     )
   }
 
-  get(idOrSlug: string, options: RequestOptions = {}): Promise<MlistResponse<Template>> {
+  get(idOrSlug: string, options: RequestOptions = {}): Promise<NulistResponse<Template>> {
     return this.transport.get<Template>(
       RequestPath.of('/templates/{id}', { id: idOrSlug }),
       options
@@ -38,7 +38,7 @@ export class Templates {
   list(
     params: ListTemplatesOptions = {},
     options: RequestOptions = {}
-  ): Promise<MlistResponse<Page<TemplateSummary>>> {
+  ): Promise<NulistResponse<Page<TemplateSummary>>> {
     return this.transport.get<Page<TemplateSummary>>(RequestPath.of('/templates'), {
       ...options,
       query: { page: params.page, pageSize: params.pageSize, kind: params.kind, q: params.q }
@@ -50,7 +50,7 @@ export class Templates {
     idOrSlug: string,
     payload: UpdateTemplateOptions,
     options: RequestOptions = {}
-  ): Promise<MlistResponse<SavedTemplate>> {
+  ): Promise<NulistResponse<SavedTemplate>> {
     return this.transport.patch<SavedTemplate, UpdateTemplateOptions>(
       RequestPath.of('/templates/{id}', { id: idOrSlug }),
       payload,
@@ -62,7 +62,7 @@ export class Templates {
   remove(
     idOrSlug: string,
     options: RequestOptions = {}
-  ): Promise<MlistResponse<DeletedResource<'template'>>> {
+  ): Promise<NulistResponse<DeletedResource<'template'>>> {
     return this.transport.delete<DeletedResource<'template'>>(
       RequestPath.of('/templates/{id}', { id: idOrSlug }),
       options

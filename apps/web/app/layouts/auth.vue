@@ -8,7 +8,7 @@
         class="rounded-md bg-inverted"
         :ui="{ icon: 'size-4 text-inverted' }"
       />
-      <span class="text-lg font-semibold text-highlighted">mlist</span>
+      <span class="text-lg font-semibold text-highlighted">nulist</span>
     </header>
     <main class="w-full max-w-sm">
       <slot />

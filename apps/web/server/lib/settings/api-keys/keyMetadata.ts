@@ -3,7 +3,7 @@ import { API_KEY_SCOPES } from '../../../../shared/auth/permissions'
 import type { GrantedPermissions } from '../../../../shared/auth/permissions'
 import type { ApiKeyScope } from '../../../../shared/types/domain'
 
-/** What mlist stores in a key's Better Auth `metadata`: the scope preset and the creating member. */
+/** What nulist stores in a key's Better Auth `metadata`: the scope preset and the creating member. */
 const keyMetadataObjectSchema = z.object({
   scope: z.enum(['full', 'sending']).catch('full'),
   createdBy: z.uuid().nullable().catch(null)

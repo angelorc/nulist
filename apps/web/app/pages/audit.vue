@@ -390,7 +390,7 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
 
     <template #body>
       <p class="text-sm text-muted">
-        A record of every change made in mlist or through the API: who made it, what changed and
+        A record of every change made in nulist or through the API: who made it, what changed and
         where the request came from.
       </p>
 

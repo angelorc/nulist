@@ -8,21 +8,21 @@ import { Batch, Emails } from './resources/emails'
 import { Lists } from './resources/lists'
 import { Templates } from './resources/templates'
 
-const DEFAULT_USER_AGENT = `mlist-node:${version}`
+const DEFAULT_USER_AGENT = `nulist-node:${version}`
 
 /** A trailing `/api/v1` (and slashes) on the base URL is accepted. */
 const API_SUFFIX = /(?:\/api\/v1)?\/*$/
 
-export interface MlistOptions {
-  /** Origin of your mlist instance, e.g. `https://mail.example.com`. Defaults to `MLIST_BASE_URL`. */
+export interface NulistOptions {
+  /** Origin of your nulist instance, e.g. `https://mail.example.com`. Defaults to `NULIST_BASE_URL`. */
   baseUrl?: string
-  /** Defaults to `MLIST_USER_AGENT`, then `mlist-node:<version>`. */
+  /** Defaults to `NULIST_USER_AGENT`, then `nulist-node:<version>`. */
   userAgent?: string
   /** Custom fetch (proxies, instrumentation, tests). Defaults to the global `fetch`. */
   fetch?: FetchFunction
 }
 
-/** The origin of an mlist instance, without the `/api/v1` suffix. */
+/** The origin of an nulist instance, without the `/api/v1` suffix. */
 function normalizeBaseUrl(value: string): string {
   let url: URL
 
@@ -30,7 +30,7 @@ function normalizeBaseUrl(value: string): string {
     url = new URL(value.trim())
   } catch {
     throw new Error(
-      `Invalid base URL "${value}". Use the origin of your mlist instance, e.g. https://mail.example.com.`
+      `Invalid base URL "${value}". Use the origin of your nulist instance, e.g. https://mail.example.com.`
     )
   }
 
@@ -49,17 +49,17 @@ function globalFetch(): FetchFunction {
 }
 
 /**
- * Client of the mlist REST API (`/api/v1`) of one organization: the API key
+ * Client of the nulist REST API (`/api/v1`) of one organization: the API key
  * decides the organization. Every method resolves to `{ data, error, headers }`
  * and never throws or rejects (HTTP errors, network failures and aborts are
  * returned in `error`); the constructor throws on misconfiguration only.
  *
  * ```ts
- * const mlist = new Mlist('ml_...', { baseUrl: 'https://mail.example.com' })
- * const { data, error } = await mlist.emails.send({ to: 'ada@example.com', template: 'welcome' })
+ * const nulist = new Nulist('ml_...', { baseUrl: 'https://mail.example.com' })
+ * const { data, error } = await nulist.emails.send({ to: 'ada@example.com', template: 'welcome' })
  * ```
  */
-export class Mlist {
+export class Nulist {
   /** Origin of the instance (without `/api/v1`). */
   readonly baseUrl: string
   readonly userAgent: string
@@ -71,25 +71,26 @@ export class Mlist {
   readonly broadcasts: Broadcasts
   readonly templates: Templates
 
-  /** @param key API key (`ml_…`); defaults to `MLIST_API_KEY`. */
-  constructor(key?: string, options: MlistOptions = {}) {
-    const apiKey = key?.trim() || Environment.read('MLIST_API_KEY')
+  /** @param key API key (`ml_…`); defaults to `NULIST_API_KEY`. */
+  constructor(key?: string, options: NulistOptions = {}) {
+    const apiKey = key?.trim() || Environment.read('NULIST_API_KEY')
 
     if (!apiKey)
       throw new Error(
-        'Missing API key. Pass it to the constructor `new Mlist("ml_123")` or set MLIST_API_KEY.'
+        'Missing API key. Pass it to the constructor `new Nulist("ml_123")` or set NULIST_API_KEY.'
       )
 
-    const baseUrl = options.baseUrl ?? Environment.read('MLIST_BASE_URL')
+    const baseUrl = options.baseUrl ?? Environment.read('NULIST_BASE_URL')
 
     if (!baseUrl) {
       throw new Error(
-        'Missing base URL. Pass `new Mlist("ml_123", { baseUrl: "https://mail.example.com" })` or set MLIST_BASE_URL.'
+        'Missing base URL. Pass `new Nulist("ml_123", { baseUrl: "https://mail.example.com" })` or set NULIST_BASE_URL.'
       )
     }
 
     this.baseUrl = normalizeBaseUrl(baseUrl)
-    this.userAgent = options.userAgent ?? Environment.read('MLIST_USER_AGENT') ?? DEFAULT_USER_AGENT
+    this.userAgent =
+      options.userAgent ?? Environment.read('NULIST_USER_AGENT') ?? DEFAULT_USER_AGENT
 
     const transport = new HttpClient({
       apiUrl: `${this.baseUrl}/api/v1`,

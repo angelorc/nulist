@@ -2,7 +2,7 @@ import { CLIENT_IP_HEADER } from '../lib/security/ClientAddress'
 
 /**
  * Resolves the client address once per request: the socket peer, or the
- * X-Forwarded-For hop behind trusted proxies (MLIST_TRUSTED_PROXIES). h3's
+ * X-Forwarded-For hop behind trusted proxies (NULIST_TRUSTED_PROXIES). h3's
  * getRequestIP reads `event.context.clientAddress`; Better Auth reads the
  * header, which always replaces whatever the client sent.
  */

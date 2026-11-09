@@ -34,7 +34,7 @@ export interface SesOutcome {
   status: 'processed' | 'ignored'
   /** Why the event was ignored (safe to show to members). */
   reason?: string
-  /** mlist message the event was correlated with. */
+  /** nulist message the event was correlated with. */
   messageId: string | null
   webhooks: PendingWebhook[]
 }
@@ -80,7 +80,7 @@ export class SesEventApplier {
     switch (event.eventType) {
       case 'Send':
         return SesEventApplier.ignored(
-          'Send events are recorded by mlist when the email is handed to SES',
+          'Send events are recorded by nulist when the email is handed to SES',
           message?.id
         )
       case 'Subscription':
@@ -644,7 +644,7 @@ export class SesEventApplier {
   }
 
   private static unknownMessage(): SesOutcome {
-    return SesEventApplier.ignored('Message not found (not sent by mlist)')
+    return SesEventApplier.ignored('Message not found (not sent by nulist)')
   }
 
   /** The message is gone but the event's organization is known: recipient rules were applied. */

@@ -52,7 +52,7 @@ const content = computed<ErrorContent>(() => {
 })
 
 // app.vue (and its title template) does not render around the error page.
-useHead({ titleTemplate: (title) => (title ? `${title} · mlist` : 'mlist') })
+useHead({ titleTemplate: (title) => (title ? `${title} · nulist` : 'nulist') })
 
 useSeoMeta({ title: () => content.value.title })
 

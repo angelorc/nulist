@@ -265,7 +265,7 @@ export class WebhookService implements WebhookDispatcher {
       const response = await this.http.post(endpoint.url, {
         headers: {
           'content-type': 'application/json',
-          'user-agent': 'mlist-webhooks/1.0',
+          'user-agent': 'nulist-webhooks/1.0',
           'webhook-id': delivery.id,
           'webhook-timestamp': String(Math.floor(signedAt.getTime() / 1000)),
           'webhook-signature': signature

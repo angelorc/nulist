@@ -1,5 +1,5 @@
 {
-  "name": "@mlist/web",
+  "name": "@nulist/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -60,7 +60,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@mlist/sdk": "workspace:*",
+    "@nulist/sdk": "workspace:*",
     "@types/html-to-text": "^9.0.4",
     "@types/mjml": "^5.4.2",
     "@types/nodemailer": "^8.0.2",

@@ -64,7 +64,7 @@ interface Workspace {
 }
 
 const SEED_MARKER = 'Newsletter (demo)'
-const ADMIN = { email: 'admin@mlist.test', password: 'mlist-admin-123', name: 'Admin' }
+const ADMIN = { email: 'admin@nulist.test', password: 'nulist-admin-123', name: 'Admin' }
 const ORGANIZATION = { name: 'Default', slug: 'default' }
 const COMPANY = { name: 'Acme', address: '548 Market St, San Francisco, CA 94104' }
 
@@ -1946,7 +1946,7 @@ class DemoSeeder {
   private buildInboundEvents(): InboundInsert[] {
     const r = this.r
     const organizationId = this.scope.organizationId
-    const topicArn = 'arn:aws:sns:us-east-1:123456789012:mlist-ses-events'
+    const topicArn = 'arn:aws:sns:us-east-1:123456789012:nulist-ses-events'
 
     const sesName: Partial<Record<EventInsert['type'], { name: string; key: string }>> = {
       delivery: { name: 'Delivery', key: 'delivery' },
@@ -2067,7 +2067,7 @@ class DemoSeeder {
           topicArn,
           payload: envelope(snsId, sesEvent, time),
           status: 'ignored' as const,
-          error: 'No message matches this SES message id (sent outside mlist)',
+          error: 'No message matches this SES message id (sent outside nulist)',
           createdAt: at(time)
         })
       )
@@ -2111,7 +2111,7 @@ class DemoSeeder {
 
     const client = () =>
       r.weighted([
-        ['mlist-node/1.4.0', 6],
+        ['nulist-node/1.4.0', 6],
         ['python-requests/2.32.3', 2],
         ['curl/8.7.1', 1]
       ] as const)

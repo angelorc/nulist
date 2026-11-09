@@ -26,7 +26,7 @@ interface SesEventDetail {
 }
 
 /**
- * An SNS delivery of an SES event about a message mlist sent (with the
+ * An SNS delivery of an SES event about a message nulist sent (with the
  * correlation tags MessageSender adds). The signature is already verified.
  */
 function sesNotification(
@@ -49,7 +49,7 @@ function sesNotification(
   return {
     Type: 'Notification',
     MessageId: randomUUID(),
-    TopicArn: 'arn:aws:sns:us-east-1:123456789012:mlist-events',
+    TopicArn: 'arn:aws:sns:us-east-1:123456789012:nulist-events',
     Message: JSON.stringify({ eventType, mail, ...detail }),
     Timestamp: new Date().toISOString()
   }

@@ -35,7 +35,7 @@ const { number } = useFormat()
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 // Test send -------------------------------------------------------------------
-const remembered = useLocalStorage<string[]>('mlist:broadcast-test-emails', [])
+const remembered = useLocalStorage<string[]>('nulist:broadcast-test-emails', [])
 
 const testEmails = ref<string[]>(
   remembered.value.length ? [...remembered.value] : user.value?.email ? [user.value.email] : []

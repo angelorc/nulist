@@ -346,7 +346,7 @@ onMounted(() => {
             </h2>
             <p class="text-sm text-muted max-w-2xl">
               SES reports deliveries, bounces, complaints, opens and clicks through Amazon SNS.
-              mlist uses them to update message status, suppress bad addresses and power analytics.
+              nulist uses them to update message status, suppress bad addresses and power analytics.
             </p>
           </div>
           <UButton
