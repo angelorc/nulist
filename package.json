@@ -1,6 +1,8 @@
 {
   "name": "nulist",
   "private": true,
+  "description": "Self-hosted email platform for newsletters and transactional mail. Contacts, lists, broadcasts and a REST API on your own SES or SMTP",
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@11.15.1",
   "engines": {

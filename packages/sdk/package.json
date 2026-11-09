@@ -1,7 +1,15 @@
 {
   "name": "@nulist/sdk",
   "version": "0.1.0",
-  "description": "TypeScript SDK for the nulist REST API",
+  "description": "Zero-dependency TypeScript SDK for the nulist REST API — send emails, manage contacts, lists, broadcasts and templates.",
+  "keywords": [
+    "nulist",
+    "email",
+    "newsletter",
+    "transactional-email",
+    "sdk",
+    "typescript"
+  ],
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
