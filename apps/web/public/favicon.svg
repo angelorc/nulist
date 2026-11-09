@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="nulist">
+  <style>.b,.t{fill:#0a0a0a}.s{stroke:#fff}@media (prefers-color-scheme:dark){.b,.t{fill:#fafafa}.s{stroke:#0a0a0a}}</style>
+  <rect class="b" width="32" height="32" rx="8"/>
+  <g class="s" fill="none" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 9 16 14 23 9"/>
+    <path d="M9 18.5h14"/>
+    <path d="M9 23h8"/>
+  </g>
+  <circle cx="22.5" cy="23" r="2.25" fill="#3b82f6"/>
+</svg>
