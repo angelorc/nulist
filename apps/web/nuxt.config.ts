@@ -1,4 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { createRequire } from 'node:module'
+
 /**
  * `@workflow/nitro` augments nitropack's NitroOptions with `workflow`, but that augmentation is not
  * part of this config's type program, so the option is declared here and spread into `nitro`.
@@ -8,6 +10,12 @@ interface WorkflowNitroOptions {
 }
 
 const workflowNitroOptions: WorkflowNitroOptions = { workflow: { dirs: ['server/workflows'] } }
+
+/**
+ * The workflow runtime imports WORKFLOW_TARGET_WORLD by name, so Nitro's tracer cannot see it.
+ * `traceInclude` takes file paths, hence the resolved entry instead of the package name.
+ */
+const workflowWorldEntry = createRequire(import.meta.url).resolve('@workflow/world-postgres')
 
 export default defineNuxtConfig({
   modules: ['@nuxt/ui', '@vueuse/nuxt', '@nuxtjs/better-auth', 'workflow/nuxt'],
@@ -60,6 +68,7 @@ export default defineNuxtConfig({
 
   nitro: {
     experimental: { asyncContext: true },
+    externals: { traceInclude: [workflowWorldEntry] },
     // Read by @workflow/nitro: only scan our workflow directory for directives.
     ...workflowNitroOptions
   },
