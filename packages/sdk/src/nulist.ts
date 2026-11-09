@@ -55,7 +55,7 @@ function globalFetch(): FetchFunction {
  * returned in `error`); the constructor throws on misconfiguration only.
  *
  * ```ts
- * const nulist = new Nulist('ml_...', { baseUrl: 'https://mail.example.com' })
+ * const nulist = createClient('ml_...', { baseUrl: 'https://mail.example.com' })
  * const { data, error } = await nulist.emails.send({ to: 'ada@example.com', template: 'welcome' })
  * ```
  */
@@ -76,15 +76,13 @@ export class Nulist {
     const apiKey = key?.trim() || Environment.read('NULIST_API_KEY')
 
     if (!apiKey)
-      throw new Error(
-        'Missing API key. Pass it to the constructor `new Nulist("ml_123")` or set NULIST_API_KEY.'
-      )
+      throw new Error('Missing API key. Pass it to `createClient("ml_123")` or set NULIST_API_KEY.')
 
     const baseUrl = options.baseUrl ?? Environment.read('NULIST_BASE_URL')
 
     if (!baseUrl) {
       throw new Error(
-        'Missing base URL. Pass `new Nulist("ml_123", { baseUrl: "https://mail.example.com" })` or set NULIST_BASE_URL.'
+        'Missing base URL. Pass `createClient("ml_123", { baseUrl: "https://mail.example.com" })` or set NULIST_BASE_URL.'
       )
     }
 
@@ -106,4 +104,17 @@ export class Nulist {
     this.broadcasts = new Broadcasts(transport)
     this.templates = new Templates(transport)
   }
+}
+
+/**
+ * Creates a {@link Nulist} client; same as `new Nulist(key, options)`.
+ *
+ * ```ts
+ * const nulist = createClient('ml_...', { baseUrl: 'https://mail.example.com' })
+ * ```
+ *
+ * @param key API key (`ml_…`); defaults to `NULIST_API_KEY`.
+ */
+export function createClient(key?: string, options?: NulistOptions): Nulist {
+  return new Nulist(key, options)
 }

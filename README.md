@@ -77,9 +77,9 @@ storage. See [`apps/web`](apps/web#configuration) for every environment variable
 ## Using the API
 
 ```ts
-import { Nulist } from '@nulist/sdk'
+import { createClient } from '@nulist/sdk'
 
-const nulist = new Nulist('ml_...', { baseUrl: 'https://mail.example.com' })
+const nulist = createClient('ml_...', { baseUrl: 'https://mail.example.com' })
 
 const { data, error } = await nulist.emails.send({
   to: 'ada@example.com',

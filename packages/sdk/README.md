@@ -28,9 +28,9 @@ Create an API key in **Settings → API keys** of your nulist instance. The key 
 organization the client acts on.
 
 ```ts
-import { Nulist } from '@nulist/sdk'
+import { createClient } from '@nulist/sdk'
 
-const nulist = new Nulist('ml_...', { baseUrl: 'https://mail.example.com' })
+const nulist = createClient('ml_...', { baseUrl: 'https://mail.example.com' })
 
 const { data, error } = await nulist.emails.send(
   {
@@ -45,7 +45,7 @@ if (error) console.error(error.name, error.message)
 else console.log(data.id, data.status)
 ```
 
-Both arguments can come from the environment: `new Nulist()` reads `NULIST_API_KEY` and
+Both arguments can come from the environment: `createClient()` reads `NULIST_API_KEY` and
 `NULIST_BASE_URL` (and optionally `NULIST_USER_AGENT`).
 
 ### Options

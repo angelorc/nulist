@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Nulist } from '../src'
+import { createClient, type Nulist } from '../src'
 import type { FetchFunction, JsonInput } from '../src'
 
 interface RecordedRequest {
@@ -65,7 +65,7 @@ class FakeFetch {
 }
 
 function client(fake: FakeFetch, userAgent?: string): Nulist {
-  return new Nulist('ml_test_key', {
+  return createClient('ml_test_key', {
     baseUrl: 'https://mail.test/api/v1/',
     fetch: fake.fetch,
     userAgent

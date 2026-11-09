@@ -1,4 +1,4 @@
-export { Nulist, type NulistOptions } from './nulist'
+export { createClient, Nulist, type NulistOptions } from './nulist'
 
 export {
   API_ERROR_NAMES,
