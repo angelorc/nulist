@@ -1,0 +1,46 @@
+name: mlist
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mlist
+      POSTGRES_PASSWORD: mlist
+      POSTGRES_DB: mlist
+    ports:
+      - '127.0.0.1:5442:5432'
+    volumes:
+      - postgres:/var/lib/postgresql
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mlist -d mlist']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Local SMTP catcher used as the "SMTP" provider in development (UI on :8026)
+  mailpit:
+    image: axllent/mailpit:v1.33
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:1026:1025'
+      - '127.0.0.1:8026:8025'
+
+  # S3-compatible object storage for the file manager (console on :9001)
+  s3:
+    image: rustfs/rustfs:1.0.4
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: mlist
+      RUSTFS_SECRET_KEY: mlist-secret
+      RUSTFS_CONSOLE_ENABLE: 'true'
+    ports:
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'
+    volumes:
+      - s3:/data
+
+volumes:
+  postgres:
+  s3:

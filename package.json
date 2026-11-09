@@ -1,0 +1,35 @@
+{
+  "name": "mlist",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:up": "docker compose up -d",
+    "db:migrate": "turbo run db:migrate",
+    "db:generate": "pnpm --filter @mlist/web db:generate",
+    "seed": "pnpm --filter @mlist/web seed",
+    "db:reset": "pnpm --filter @mlist/web db:reset",
+    "db:demo": "pnpm --filter @mlist/web db:demo",
+    "db:demo:save": "pnpm --filter @mlist/web db:demo:save",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "quality": "turbo run quality",
+    "quality:fix": "turbo run quality:fix"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.92.0",
+    "oxfmt": "0.77.0",
+    "oxlint": "1.92.0",
+    "oxlint-tsgolint": "7.0.2006",
+    "turbo": "2.11.10"
+  }
+}

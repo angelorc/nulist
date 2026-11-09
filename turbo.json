@@ -1,0 +1,46 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "globalEnv": ["NODE_ENV"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "env": ["MLIST_*", "WORKFLOW_*"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".output/**", "dist/**"]
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "env": ["MLIST_*", "WORKFLOW_*"],
+      "cache": false,
+      "persistent": true
+    },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "env": ["MLIST_*", "WORKFLOW_*"],
+      "cache": false
+    },
+    "db:migrate": {
+      "env": ["MLIST_*"],
+      "cache": false
+    },
+    "//#lint": {},
+    "//#lint:fix": {
+      "cache": false
+    },
+    "//#format": {
+      "dependsOn": ["//#lint:fix"],
+      "cache": false
+    },
+    "//#format:check": {},
+    "//#quality": {
+      "dependsOn": ["//#lint", "//#format:check"]
+    },
+    "//#quality:fix": {
+      "dependsOn": ["//#lint:fix", "//#format"]
+    }
+  }
+}

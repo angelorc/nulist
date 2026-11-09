@@ -1,0 +1,16 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@tailwindcss/oxide': true
+  esbuild: true
+  unrs-resolver: false
+  vue-demi: false
+  better-sqlite3: false
+  '@swc/core': false
+  cbor-extract: false
+
+minimumReleaseAgeExclude:
+  - jose@6.2.16
