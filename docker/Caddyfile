@@ -1,0 +1,15 @@
+# Reverse proxy for the production stack (docker compose --profile caddy).
+# Site address is NUXT_PUBLIC_SITE_URL (https://your-domain): Caddy obtains and renews its
+# certificate automatically; DNS must point at this host and ports 80/443 must be reachable.
+
+{$NUXT_PUBLIC_SITE_URL} {
+	encode zstd gzip
+
+	# Caddy sets X-Forwarded-For/-Proto/-Host; trust it via MLIST_TRUSTED_PROXIES.
+	reverse_proxy web:3000
+
+	log {
+		output stdout
+		format console
+	}
+}

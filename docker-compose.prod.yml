@@ -1,6 +1,12 @@
 # Production stack: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
-# Put a TLS-terminating reverse proxy in front of `web` and set MLIST_TRUSTED_PROXIES accordingly.
-# Optional bundled S3 storage (RustFS): add `--profile storage`.
+#
+# Optional profiles (combine freely, e.g. `--profile caddy --profile storage`):
+#   caddy    bundled Caddy reverse proxy with automatic HTTPS for NUXT_PUBLIC_SITE_URL (docker/Caddyfile)
+#   storage  bundled S3-compatible storage (RustFS)
+#
+# Without `caddy`, put your own TLS-terminating proxy in front of WEB_BIND:WEB_PORT.
+# Either way, set MLIST_TRUSTED_PROXIES to the proxy's address so client IPs are read
+# from X-Forwarded-For, and NUXT_PUBLIC_SITE_URL to the public https:// URL.
 name: mlist-prod
 
 x-app-env: &app-env
@@ -70,6 +76,26 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Optional reverse proxy with automatic HTTPS (enable with --profile caddy).
+  # Reaches `web` over the compose network, so WEB_BIND can stay on loopback.
+  caddy:
+    profiles: [caddy]
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      NUXT_PUBLIC_SITE_URL: ${NUXT_PUBLIC_SITE_URL:?set NUXT_PUBLIC_SITE_URL}
+    ports:
+      - '${CADDY_HTTP_PORT:-80}:80'
+      - '${CADDY_HTTPS_PORT:-443}:443'
+      - '${CADDY_HTTPS_PORT:-443}:443/udp' # HTTP/3
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # certificates and ACME account: keep it
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+
   # Optional self-hosted S3 (enable with --profile storage); point MLIST_S3_* at it
   s3:
     profiles: [storage]
@@ -87,3 +113,5 @@ services:
 volumes:
   postgres:
   s3:
+  caddy_data:
+  caddy_config:
