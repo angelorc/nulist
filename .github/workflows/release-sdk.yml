@@ -1,16 +1,20 @@
 name: Release SDK
 
+# Publishes @nulist/sdk on every `v*` release tag; app and SDK share one version.
+# To (re)publish an existing tag: gh workflow run release-sdk.yml --ref v0.1.0
 on:
   push:
-    tags: ['sdk-v*']
+    tags: ['v*']
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 jobs:
   publish:
     name: Publish @nulist/sdk to npm
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -21,14 +25,11 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
-      - name: Check tag matches package version
+      - name: Check tag matches SDK version
         run: |
           version="$(node -p "require('./packages/sdk/package.json').version")"
-          test "sdk-v${version}" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} != sdk-v${version}"; exit 1; }
+          test "v${version}" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} != v${version}"; exit 1; }
       - run: pnpm turbo run typecheck test build --filter=@nulist/sdk
       - run: pnpm --filter @nulist/sdk publish --access public --provenance --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - uses: softprops/action-gh-release@v3
-        with:
-          generate_release_notes: true
