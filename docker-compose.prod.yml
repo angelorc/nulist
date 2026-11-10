@@ -1,4 +1,7 @@
-# Production stack: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# Production stack: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Runs the released images from GHCR, pinned by NULIST_VERSION (a release tag without the
+# leading `v`, e.g. 0.1.0). To upgrade, bump NULIST_VERSION and run `pull` then `up -d`.
 #
 # Optional profiles (combine freely, e.g. `--profile caddy --profile storage`):
 #   caddy    bundled Caddy reverse proxy with automatic HTTPS for NUXT_PUBLIC_SITE_URL (docker/Caddyfile)
@@ -33,10 +36,7 @@ services:
 
   # Applies Drizzle migrations and bootstraps the workflow tables, then exits
   migrate:
-    build:
-      context: .
-      target: migrate
-    image: nulist-migrate:latest
+    image: ghcr.io/angelorc/nulist-migrate:${NULIST_VERSION:?set NULIST_VERSION}
     restart: 'no'
     environment: *app-env
     depends_on:
@@ -44,10 +44,7 @@ services:
         condition: service_healthy
 
   web:
-    build:
-      context: .
-      target: runtime
-    image: nulist-web:latest
+    image: ghcr.io/angelorc/nulist:${NULIST_VERSION:?set NULIST_VERSION}
     restart: unless-stopped
     environment:
       <<: *app-env

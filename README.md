@@ -67,9 +67,13 @@ A production stack ships with the repository: Postgres, a one-shot migration job
 container, plus optional Caddy (automatic HTTPS) and RustFS (S3) profiles.
 
 ```bash
-cp .env.prod.example .env.prod   # fill in the secrets
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+cp .env.prod.example .env.prod   # fill in the secrets and NULIST_VERSION
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 ```
+
+The stack runs the released images `ghcr.io/angelorc/nulist` and `ghcr.io/angelorc/nulist-migrate`,
+pinned by `NULIST_VERSION`. To upgrade, bump it and run `pull` followed by `up -d`; the migration
+job applies the new schema before the web container starts.
 
 Add `--profile caddy` and/or `--profile storage` to enable the bundled reverse proxy and object
 storage. See [`apps/web`](apps/web#configuration) for every environment variable.

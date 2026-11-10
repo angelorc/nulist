@@ -1,6 +1,6 @@
 {
   "name": "@nulist/web",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "nulist dashboard, REST API and durable background workers. Nuxt 4 app backed by Postgres.",
   "license": "MIT",
   "private": true,
