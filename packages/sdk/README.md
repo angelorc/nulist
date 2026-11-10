@@ -1,6 +1,6 @@
 # @nulist/sdk
 
-![version 0.1.1](https://img.shields.io/badge/version-0.1.1-yellow)
+![version 0.1.2](https://img.shields.io/badge/version-0.1.2-yellow)
 ![license MIT](https://img.shields.io/badge/license-MIT-blue)
 ![dependencies 0](https://img.shields.io/badge/dependencies-0-green)
 

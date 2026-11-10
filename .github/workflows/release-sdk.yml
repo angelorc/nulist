@@ -1,7 +1,9 @@
 name: Release SDK
 
-# Publishes @nulist/sdk on every `v*` release tag; app and SDK share one version.
-# To (re)publish an existing tag: gh workflow run release-sdk.yml --ref v0.1.0
+# Stages @nulist/sdk on every `v*` release tag; app and SDK share one version.
+# Auth is npm trusted publishing (OIDC), no token. The staged version goes live only after a
+# maintainer approves it with 2FA: npmjs.com > Staged Packages, or `npm stage approve <id>`.
+# To (re)stage an existing tag: gh workflow run release-sdk.yml --ref vX.Y.Z
 on:
   push:
     tags: ['v*']
@@ -13,7 +15,7 @@ permissions:
 
 jobs:
   publish:
-    name: Publish @nulist/sdk to npm
+    name: Stage @nulist/sdk on npm
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -30,6 +32,7 @@ jobs:
           version="$(node -p "require('./packages/sdk/package.json').version")"
           test "v${version}" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} != v${version}"; exit 1; }
       - run: pnpm turbo run typecheck test build --filter=@nulist/sdk
-      - run: pnpm --filter @nulist/sdk publish --access public --provenance --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # `npm stage` needs npm >= 11.19; the SDK has no workspace deps, so npm can pack it as-is
+      - run: npm install -g npm@11.19.1
+      - run: npm stage publish --access public --provenance
+        working-directory: packages/sdk
