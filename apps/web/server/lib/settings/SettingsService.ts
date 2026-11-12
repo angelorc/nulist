@@ -66,6 +66,8 @@ function validate<T, I>(section: SettingsSection, schema: z.ZodType<T, I>, input
   )
 }
 
+const SES_SMTP_PASSWORD = /^B[A-Za-z0-9+/]{43}$/
+
 const generalPartial = generalSettingsSchema.partial()
 
 const sendingPartial = sendingSettingsSchema
@@ -105,6 +107,12 @@ const CODECS: SectionCodecs = {
         throw new ValidationError('Choose the AWS region of your SES account.', {
           field: 'ses.region'
         })
+
+      if (SES_SMTP_PASSWORD.test(value.ses.secretAccessKey))
+        throw new ValidationError(
+          'This is an SES SMTP password, not an AWS secret access key. Paste the 40-character secret access key of the IAM user, or use the SMTP provider.',
+          { field: 'ses.secretAccessKey' }
+        )
 
       if (value.provider === 'smtp' && !value.smtp.host)
         throw new ValidationError('Enter the SMTP host.', { field: 'smtp.host' })

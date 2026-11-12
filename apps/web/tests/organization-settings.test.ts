@@ -124,6 +124,30 @@ describe('settings secrets', () => {
     })
   })
 
+  it('rejects an SES SMTP password as the secret access key and trims a pasted key', async () => {
+    const org = await platform.organization('SES secret')
+    const { settings: section } = org.services
+    const current = await section.get('sending')
+    const ses = { ...current.ses, region: 'eu-west-1', accessKeyId: 'AKIAEXAMPLEEXAMPLE12' }
+    const smtpPassword = 'BAbCdEfGhIjKlMnOpQrStUvWxYz0123456789+/AbCdE'
+
+    await expect(
+      section.preview('sending', {
+        ...current,
+        provider: 'ses',
+        ses: { ...ses, secretAccessKey: smtpPassword }
+      })
+    ).rejects.toMatchObject({ data: { field: 'ses.secretAccessKey' } })
+
+    const secret = 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+    await section.update('sending', {
+      ...current,
+      provider: 'ses',
+      ses: { ...ses, secretAccessKey: ` ${secret}\n` }
+    })
+    expect((await section.get('sending')).ses.secretAccessKey).toBe(secret)
+  })
+
   it('never reveals the instance S3 secret and asks for a new one when the endpoint or bucket changes', async () => {
     const org = await platform.organization('S3 secret')
     const { settings: section } = org.services
