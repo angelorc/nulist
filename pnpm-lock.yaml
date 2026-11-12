@@ -56,6 +56,21 @@ importers:
       '@tanstack/table-core':
         specifier: ^8.21.3
         version: 8.21.3
+      '@templatical/editor':
+        specifier: 0.59.1
+        version: 0.59.1(@templatical/renderer@0.59.1(liquidjs@10.30.1))(liquidjs@10.30.1)
+      '@templatical/import-mjml':
+        specifier: 0.59.1
+        version: 0.59.1(liquidjs@10.30.1)
+      '@templatical/quality':
+        specifier: 0.59.1
+        version: 0.59.1(liquidjs@10.30.1)
+      '@templatical/renderer':
+        specifier: 0.59.1
+        version: 0.59.1(liquidjs@10.30.1)
+      '@templatical/types':
+        specifier: 0.59.1
+        version: 0.59.1(liquidjs@10.30.1)
       '@vueuse/core':
         specifier: ^14.4.0
         version: 14.4.0(vue@3.5.45(typescript@6.0.3))
@@ -68,15 +83,24 @@ importers:
       better-auth:
         specifier: 1.7.18
         version: 1.7.18(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@types/pg@8.23.1)(kysely@0.29.8)(pg@8.23.1))(pg@8.23.1)(react@19.3.1)(vitest@5.1.0(@types/node@26.6.6)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)))(vue@3.5.45(typescript@6.0.3))
+      cheerio:
+        specifier: 1.2.0
+        version: 1.2.0
       codemirror:
         specifier: ^6.0.2
         version: 6.0.2
       date-fns:
         specifier: ^4.4.0
         version: 4.4.0
+      domhandler:
+        specifier: 5.0.3
+        version: 5.0.3
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(@types/pg@8.23.1)(kysely@0.29.8)(pg@8.23.1)
+      entities:
+        specifier: 7.0.1
+        version: 7.0.1
       grapesjs:
         specifier: ^0.23.9
         version: 0.23.9
@@ -2848,6 +2872,34 @@ packages:
     peerDependencies:
       vue: ^2.7.0 || ^3.0.0
 
+  '@templatical/editor@0.59.1':
+    resolution: {integrity: sha512-W/0mqR4/4P6ns+2WCr1KKDBjbX9RIt1Qi18kbXK/UA12QtTImVaV5s4+QGIdwiUediCYEV4mU800PL9f7ZYFHg==}
+    peerDependencies:
+      '@templatical/renderer': 0.59.1
+      pusher-js: ^8.6.0
+    peerDependenciesMeta:
+      '@templatical/renderer':
+        optional: true
+      pusher-js:
+        optional: true
+
+  '@templatical/import-mjml@0.59.1':
+    resolution: {integrity: sha512-SULtdGySo2aleIFbJxUW3yPMY8hEJM+JSmlVLTdW29hWmLBJ8oeEBsylGEicSuqTN0xmHvPV98kYe46Sjy9SBA==}
+
+  '@templatical/quality@0.59.1':
+    resolution: {integrity: sha512-/fM9hnd64CkVZzdy82HqE9NQi1sIQW6JgNgA7PZa+YahvtHlvdA6GCOqhW7n3lq3mQy0THuN663aHvWGOpcOWw==}
+
+  '@templatical/renderer@0.59.1':
+    resolution: {integrity: sha512-YPGub7MR2R9DK4oJj2DZ5vULsuCx8TnFQdZrX4qk2GD9JBFEN5kcu2HBOIA6ZBf1OHEm5moufHzRXJeClExNpA==}
+
+  '@templatical/types@0.59.1':
+    resolution: {integrity: sha512-q2sh7GQ1ATJ/JghMbj5reE1/CJRT1e7N0yKvPzNnpXnPqjvLuC1o72v0DdzT/n+Wdw2JxYDKfFSzboeZqj8CnQ==}
+    peerDependencies:
+      liquidjs: ^10.30.1
+    peerDependenciesMeta:
+      liquidjs:
+        optional: true
+
   '@tiptap/core@3.33.0':
     resolution: {integrity: sha512-sZjBCwK9+h0kbc/CZvkepX6RTJ2jOfeWY1aId9O3YnG0CAiOs/4DbqFmpcmv5BQAGPA6gC96gqdafa/9Dpg0tw==}
     peerDependencies:
@@ -4582,8 +4634,16 @@ packages:
   dom-serializer@2.0.0:
     resolution: {integrity: sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==}
 
+  dom-serializer@3.1.1:
+    resolution: {integrity: sha512-4MEa38/QexBob6gFNwu+EGdWvhJ1OKuNwdYY3Y3NyeWDQfnGeDYQUDfIRzWu5B5gsv03so2Uxd28YC6zrsx3Lw==}
+    engines: {node: '>=20.19.0'}
+
   domelementtype@2.3.0:
     resolution: {integrity: sha512-OLETBj6w0OsagBwdXnPdN0cnMfF9opN69co+7ZrbfPGrdpPVNBUj02spi6B1N7wChLQiPn4CSH/zJvXw56gmHw==}
+
+  domelementtype@3.0.0:
+    resolution: {integrity: sha512-umCQid3jKbDmVjx8jGaW7uUykm4DEUeyV21hPxNMo2nV955DhUThwqyOIDtreepP31hl84X7G5U9ZfsWvIB3Pg==}
+    engines: {node: '>=20.19.0'}
 
   domhandler@4.3.1:
     resolution: {integrity: sha512-GrwoxYN+uWlzO8uhUXRl0P+kHE4GtVPfYzVLcUxPL7KNdHKj66vvlhiweIHqYYXWlw+T8iLMp42Lm67ghw4WMQ==}
@@ -4593,11 +4653,19 @@ packages:
     resolution: {integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==}
     engines: {node: '>= 4'}
 
+  domhandler@6.0.1:
+    resolution: {integrity: sha512-gYzvtM72ZtxQO0T048kd6HWSbbGCNOUwcnfQ01cqIJ4X2IYKFFHZ5mKvrQETcFXxsRObZulDaKmy//R7TPtsBg==}
+    engines: {node: '>=20.19.0'}
+
   domutils@2.8.0:
     resolution: {integrity: sha512-w96Cjofp72M5IIhpjgobBimYEfoPjx1Vx0BSX9P30WBdZW2WIKU0T1Bd0kz2eNZ9ikjKgHbEyKx8BB6H1L3h3A==}
 
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
+
+  domutils@4.0.2:
+    resolution: {integrity: sha512-qI4JLRKnSzqFqr7hAlS5xQDusBCjKSEG4t4+7aNrIQMHBcsC2TGEhuyABJdYkgSewL57PNLYEiibY2iPKhKpaA==}
+    engines: {node: '>=20.19.0'}
 
   dot-prop@10.2.0:
     resolution: {integrity: sha512-BTJ9aZYL3vCfZlZOBLy9v8TUqWGQ0pzFnygKwFZt5udj6viBoFIBviKPUoZLDCPn1FoXffv6McQFDenrm5Krfw==}
@@ -4920,6 +4988,10 @@ packages:
   entities@7.0.1:
     resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
     engines: {node: '>=0.12'}
+
+  entities@8.1.0:
+    resolution: {integrity: sha512-kxL7msIffSuh9aaFAMD7rxAIuTRMAHMeBtgHW2yUdWw732ZNh4MehkF2gdjvtdmikkaIP9bFDDJOPlsvm7avrA==}
+    engines: {node: '>=20.19.0'}
 
   env-paths@2.2.1:
     resolution: {integrity: sha512-+h1lkLKhZMTYjog1VEpJNG7NZJWcuc2DDk/qsqSTRRCOXiLjeQ1d1/udrUGhqMxUgAlwKNZ0cf2uqan5GLuS2A==}
@@ -5350,6 +5422,10 @@ packages:
 
   htmlparser2@10.1.0:
     resolution: {integrity: sha512-VTZkM9GWRAtEpveh7MSF6SjjrpNVNNVJfFup7xTY3UpFtm67foy9HDVXneLtFVt4pMz5kZtgNcvCniNFb1hlEQ==}
+
+  htmlparser2@12.0.0:
+    resolution: {integrity: sha512-Tz7u1i95/g2x2jz81+x0FBVhBhY5aRTvD3tXXdFaljuNdzDLJ8UGNRrTcj2cgQvAg3iW/h77Fz15nLW0L0CrZw==}
+    engines: {node: '>=20.19.0'}
 
   htmlparser2@7.2.0:
     resolution: {integrity: sha512-H7MImA4MS6cw7nbyURtLPO1Tms7C5H602LRETv95z1MxO/7CP7rDVROehUYeYBUYEON94NXXDEPmZuq+hX4sog==}
@@ -10685,6 +10761,38 @@ snapshots:
       '@tanstack/virtual-core': 3.19.11
       vue: 3.5.45(typescript@6.0.3)
 
+  '@templatical/editor@0.59.1(@templatical/renderer@0.59.1(liquidjs@10.30.1))(liquidjs@10.30.1)':
+    optionalDependencies:
+      '@templatical/quality': 0.59.1(liquidjs@10.30.1)
+      '@templatical/renderer': 0.59.1(liquidjs@10.30.1)
+    transitivePeerDependencies:
+      - liquidjs
+
+  '@templatical/import-mjml@0.59.1(liquidjs@10.30.1)':
+    dependencies:
+      '@templatical/types': 0.59.1(liquidjs@10.30.1)
+      cheerio: 1.2.0
+      domhandler: 6.0.1
+    transitivePeerDependencies:
+      - liquidjs
+
+  '@templatical/quality@0.59.1(liquidjs@10.30.1)':
+    dependencies:
+      '@templatical/types': 0.59.1(liquidjs@10.30.1)
+      htmlparser2: 12.0.0
+    transitivePeerDependencies:
+      - liquidjs
+
+  '@templatical/renderer@0.59.1(liquidjs@10.30.1)':
+    dependencies:
+      '@templatical/types': 0.59.1(liquidjs@10.30.1)
+    transitivePeerDependencies:
+      - liquidjs
+
+  '@templatical/types@0.59.1(liquidjs@10.30.1)':
+    optionalDependencies:
+      liquidjs: 10.30.1
+
   '@tiptap/core@3.33.0(@tiptap/pm@3.33.0)':
     dependencies:
       '@tiptap/pm': 3.33.0
@@ -12775,7 +12883,15 @@ snapshots:
       domhandler: 5.0.3
       entities: 4.5.0
 
+  dom-serializer@3.1.1:
+    dependencies:
+      domelementtype: 3.0.0
+      domhandler: 6.0.1
+      entities: 8.1.0
+
   domelementtype@2.3.0: {}
+
+  domelementtype@3.0.0: {}
 
   domhandler@4.3.1:
     dependencies:
@@ -12784,6 +12900,10 @@ snapshots:
   domhandler@5.0.3:
     dependencies:
       domelementtype: 2.3.0
+
+  domhandler@6.0.1:
+    dependencies:
+      domelementtype: 3.0.0
 
   domutils@2.8.0:
     dependencies:
@@ -12796,6 +12916,12 @@ snapshots:
       dom-serializer: 2.0.0
       domelementtype: 2.3.0
       domhandler: 5.0.3
+
+  domutils@4.0.2:
+    dependencies:
+      dom-serializer: 3.1.1
+      domelementtype: 3.0.0
+      domhandler: 6.0.1
 
   dot-prop@10.2.0:
     dependencies:
@@ -12918,6 +13044,8 @@ snapshots:
   entities@6.0.1: {}
 
   entities@7.0.1: {}
+
+  entities@8.1.0: {}
 
   env-paths@2.2.1: {}
 
@@ -13474,6 +13602,13 @@ snapshots:
       domhandler: 5.0.3
       domutils: 3.2.2
       entities: 7.0.1
+
+  htmlparser2@12.0.0:
+    dependencies:
+      domelementtype: 3.0.0
+      domhandler: 6.0.1
+      domutils: 4.0.2
+      entities: 8.1.0
 
   htmlparser2@7.2.0:
     dependencies:

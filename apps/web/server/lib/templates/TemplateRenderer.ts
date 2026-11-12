@@ -1,4 +1,5 @@
 import { convert } from 'html-to-text'
+import { decodeHTMLStrict } from 'entities'
 import { Liquid } from 'liquidjs'
 import type { LiquidOptions, Scope, Template } from 'liquidjs'
 import mjml2html from 'mjml'
@@ -119,7 +120,11 @@ export class PreparedEmail {
     const text = htmlToText(html)
 
     if (this.input.preheader) {
-      const preheader = await this.textEngine.parseAndRender(this.input.preheader, vars)
+      const preheader = await this.textEngine.parseAndRender(
+        LiquidMarkup.decodeTags(this.input.preheader),
+        vars
+      )
+
       html = injectPreheader(html, preheader)
     }
 
@@ -155,7 +160,7 @@ export class TemplateRenderer {
   /** Throws a ValidationError with the Liquid parse error, if any. */
   assertLiquid(source: string, field = 'template'): void {
     try {
-      this.htmlEngine.parse(source)
+      this.htmlEngine.parse(LiquidMarkup.decodeTags(source))
     } catch (error) {
       throw new ValidationError(`Invalid ${field} syntax: ${errorMessage(error)}`, { field })
     }
@@ -168,8 +173,8 @@ export class TemplateRenderer {
     return new PreparedEmail(
       this.htmlEngine,
       this.textEngine,
-      this.textEngine.parse(input.subject),
-      this.htmlEngine.parse(input.html),
+      this.textEngine.parse(LiquidMarkup.decodeTags(input.subject)),
+      this.htmlEngine.parse(LiquidMarkup.decodeTags(input.html)),
       input
     )
   }
@@ -190,6 +195,28 @@ export class TemplateRenderer {
       linkCount: links.length,
       sizeKb: Math.round(Buffer.byteLength(html, 'utf8') / 1024)
     }
+  }
+}
+
+const LIQUID_TAG = /\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\}/g
+
+/** A no-break space: `&nbsp;` decoded. Liquid only knows ordinary spaces. */
+const NO_BREAK_SPACE = /\u00a0/g
+
+/**
+ * Liquid written in the visual editor reaches the HTML entity-encoded: a table
+ * cell or a link turns `default: "there"` into `default: &quot;there&quot;`,
+ * and `'there'` into `&#039;there&#039;`.
+ * Entities never mean anything inside a Liquid tag, and the tag is replaced by
+ * its value when rendered, so decoding them inside `{{ }}` / `{% %}` is safe
+ * and keeps hand-written Liquid working wherever it was typed. Only complete
+ * entities (ending in `;`) are decoded: `?id=1&region=eu` in a URL stays as written.
+ */
+export class LiquidMarkup {
+  static decodeTags(source: string): string {
+    if (!source.includes('&')) return source
+
+    return source.replace(LIQUID_TAG, (tag) => decodeHTMLStrict(tag).replace(NO_BREAK_SPACE, ' '))
   }
 }
 

@@ -50,6 +50,9 @@ import { SettingsService } from '../settings/SettingsService'
 import { FileService } from '../storage/FileService'
 import { TemplatePreviewer } from '../templates/TemplatePreviewer'
 import type { TemplateRenderer } from '../templates/TemplateRenderer'
+import { TemplateDesignRenderer } from '../templates/TemplateDesignRenderer'
+import { StarterCatalog } from '../templates/starters/StarterCatalog'
+import { StarterGallery } from '../templates/starters/StarterGallery'
 import { TemplateService } from '../templates/TemplateService'
 import { TemplateTestSender } from '../templates/TemplateTestSender'
 import { TransactionalService } from '../transactional/TransactionalService'
@@ -104,6 +107,9 @@ export class OrganizationContainer {
   private segmentsInstance?: SegmentService
   private audienceInstance?: AudienceResolver
   private templatesInstance?: TemplateService
+  private designRendererInstance?: TemplateDesignRenderer
+  private starterCatalogInstance?: StarterCatalog
+  private starterGalleryInstance?: StarterGallery
   private filesInstance?: FileService
   private broadcastsInstance?: BroadcastService
   private transactionalInstance?: TransactionalService
@@ -303,7 +309,26 @@ export class OrganizationContainer {
       this.db,
       this.renderer,
       this.audit,
-      this.limits
+      this.limits,
+      this.designRenderer,
+      this.starterCatalog
+    ))
+  }
+
+  get designRenderer(): TemplateDesignRenderer {
+    return (this.designRendererInstance ??= new TemplateDesignRenderer())
+  }
+
+  get starterCatalog(): StarterCatalog {
+    return (this.starterCatalogInstance ??= new StarterCatalog())
+  }
+
+  get starterGallery(): StarterGallery {
+    return (this.starterGalleryInstance ??= new StarterGallery(
+      this.starterCatalog,
+      this.designRenderer,
+      this.renderer,
+      this.templatePreviewer
     ))
   }
 

@@ -1,5 +1,5 @@
 /** The toast API this notifier writes to (Nuxt UI's `useToast()`). */
-export type ToastApi = Pick<ReturnType<typeof useToast>, 'add'>
+export type ToastApi = Pick<ReturnType<typeof useToast>, 'add' | 'remove'>
 
 /** Extra toast fields a notification may set (actions, id, a custom duration…). */
 export type NotifyOptions = Omit<Parameters<ToastApi['add']>[0], 'title' | 'color'>
@@ -37,6 +37,11 @@ export class Notifier {
       title,
       color: 'error'
     })
+  }
+
+  /** Closes the toast added with this `id`, if it is still shown. */
+  dismiss(id: string): void {
+    this.toast.remove(id)
   }
 }
 

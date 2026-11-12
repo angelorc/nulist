@@ -4,9 +4,9 @@ import type {
   TemplateDesign,
   TemplateDto,
   TemplateSaveResult,
-  TemplateUpdateInput,
-  VisualEditorApi
+  TemplateUpdateInput
 } from '#shared/schemas/templates'
+import type { TemplaticalEditorApi } from '#shared/schemas/template-design'
 
 definePageMeta({ permission: { template: ['read'] } })
 
@@ -73,8 +73,23 @@ const visualSource = shallowRef<{ mjml: string; design: TemplateDesign | null }>
   design: initial.design
 })
 
-const visualApi = shallowRef<VisualEditorApi | null>(null)
-const visualChanged = ref(false)
+const visualApi = shallowRef<TemplaticalEditorApi | null>(null)
+
+/** The content the visual editor opened is not saved yet (code edited, or an unsaved export). */
+const visualSourceDirty = ref(false)
+
+/** The visual editor holds edits since it opened or last saved (the editor tells). */
+const visualEdited = ref(false)
+
+/** Set when the visual editor could not open the template; its stored content is kept. */
+const visualFailed = ref(false)
+
+/**
+ * The code that matches the visual editor while it has no new edits: the
+ * stored MJML, or the code written before switching to visual. Going back to
+ * Code without editing restores it instead of MJML regenerated from blocks.
+ */
+let codeBaseline = initial.mjml
 
 /** Last visual export when switching to code, reused if the code is left untouched. */
 let exported: { mjml: string; design: TemplateDesign; changed: boolean } | null = null
@@ -108,8 +123,22 @@ const metaDirty = computed(
 const contentDirty = computed(
   () =>
     mode.value !== saved.editor ||
-    (mode.value === 'code' ? mjml.value !== saved.mjml : visualChanged.value)
+    (mode.value === 'code'
+      ? mjml.value !== saved.mjml
+      : visualSourceDirty.value || visualEdited.value)
 )
+
+/**
+ * Whether the email body differs from the saved one, asking the visual editor
+ * directly: its own change report can lag behind the latest keystroke.
+ */
+function contentChanged(): boolean {
+  if (mode.value !== saved.editor) return true
+
+  if (mode.value === 'code') return mjml.value !== saved.mjml
+
+  return visualSourceDirty.value || (visualApi.value?.isChanged() ?? false)
+}
 
 const dirty = computed(() => canEdit.value && (metaDirty.value || contentDirty.value))
 
@@ -152,30 +181,41 @@ async function doSave(): Promise<boolean> {
     editor: mode.value
   }
 
-  if (mode.value === 'visual') {
-    const content = visualApi.value?.getContent()
+  const api = visualApi.value
+  const changed = contentChanged()
+  let keptStoredContent = false
 
-    if (!content) {
+  // The email body goes only when it changed: renaming a template must not
+  // rewrite content the visual editor converted when it opened.
+  if (changed && mode.value === 'code') {
+    body.mjml = mjml.value
+  } else if (changed) {
+    const content = await api?.getContent()
+
+    if (content) {
+      body.mjml = content.mjml
+      body.design = content.design
+    } else if (visualFailed.value) {
+      body.editor = saved.editor
+      keptStoredContent = true
+    } else {
       notify.warning('The editor is still loading', { description: 'Try again in a moment.' })
 
       return false
     }
-
-    body.mjml = content.mjml
-    body.design = content.design
-  } else {
-    body.mjml = mjml.value
   }
 
   const result = await patch(body)
 
   if (!result) return false
 
-  Object.assign(meta, {
-    name: result.name,
-    subject: result.subject,
-    preheader: result.preheader ?? ''
-  })
+  // Fields typed while the save was running keep the new text.
+  if (meta.name.trim() === body.name) meta.name = result.name
+
+  if (meta.subject.trim() === body.subject) meta.subject = result.subject
+
+  if ((meta.preheader.trim() || null) === body.preheader) meta.preheader = result.preheader ?? ''
+
   Object.assign(saved, {
     name: result.name,
     subject: result.subject,
@@ -186,9 +226,21 @@ async function doSave(): Promise<boolean> {
   })
   template.value = result
 
-  if (mode.value === 'visual') {
+  // Edits made while the save was running stay unsaved: the editor compares with what was sent.
+  if (body.design && api && visualApi.value === api) {
     mjml.value = result.mjml
-    visualChanged.value = false
+    codeBaseline = result.mjml
+    visualSourceDirty.value = false
+    api.markSaved(body.design)
+  }
+
+  if (keptStoredContent) {
+    notify.warning('Only the name, subject and preheader were saved', {
+      description:
+        'The visual editor could not open this template. Switch to Code to edit its content.'
+    })
+
+    return true
   }
 
   const [first] = result.warnings
@@ -213,7 +265,23 @@ defineShortcuts(
 )
 
 // Mode switching ---------------------------------------------------------------
+
+/** Set while a switch checks the code or asks; a second click then starts nothing. */
+let switching = false
+
 async function switchMode(next: Mode) {
+  if (switching) return
+
+  switching = true
+
+  try {
+    await changeMode(next)
+  } finally {
+    switching = false
+  }
+}
+
+async function changeMode(next: Mode) {
   if (next === mode.value) return
 
   // Read-only views just change what is shown (saved content as preview or source).
@@ -224,15 +292,24 @@ async function switchMode(next: Mode) {
   }
 
   if (next === 'code') {
-    const content = visualApi.value?.getContent()
-    const source = content ? formatter.format(content.mjml) : visualSource.value.mjml
+    const api = visualApi.value
+    const content = await api?.getContent()
+    const edited = api?.isChanged() ?? false
+
+    const source = !edited
+      ? codeBaseline
+      : content
+        ? formatter.format(content.mjml)
+        : visualSource.value.mjml
+
     exported = {
       mjml: source,
       design: content?.design ?? visualSource.value.design ?? {},
-      changed: visualChanged.value
+      changed: visualSourceDirty.value || edited
     }
     mjml.value = source
     visualApi.value = null
+    visualFailed.value = false
     mode.value = 'code'
 
     return
@@ -242,21 +319,37 @@ async function switchMode(next: Mode) {
     exported !== null && exported.mjml === mjml.value && Object.keys(exported.design).length > 0
 
   if (!untouched) {
-    const ok = await confirm({
-      title: 'Switch to the visual editor?',
-      description:
-        'The visual editor rebuilds the layout from your MJML. Raw HTML and tags it does not support may change when you save.',
-      confirmLabel: 'Switch to visual'
-    })
+    const lost = await unsupportedLogicIn(mjml.value)
+
+    const ok = await confirm(
+      lost
+        ? {
+            title: 'Some Liquid logic cannot move to the visual editor',
+            description: `${lost === 1 ? '1 Liquid tag wraps' : `${lost} Liquid tags wrap`} whole parts of this email, such as a loop around several sections. Blocks cannot keep it: those parts would show for every contact, or break the layout. Stay in the code editor to keep this logic.`,
+            confirmLabel: 'Switch anyway',
+            cancelLabel: 'Stay in code',
+            danger: true
+          }
+        : {
+            title: 'Switch to the visual editor?',
+            description:
+              'The visual editor turns your MJML into blocks you can drag and edit. Parts it cannot turn into blocks are kept as HTML blocks, and spacing can change a little: check the result with Preview before saving. Going back to Code without editing restores your code exactly.',
+            confirmLabel: 'Switch to visual'
+          }
+    )
 
     if (!ok) return
   }
+
+  codeBaseline = mjml.value
+  visualFailed.value = false
 
   visualSource.value =
     untouched && exported
       ? { mjml: mjml.value, design: exported.design }
       : { mjml: mjml.value, design: null }
-  visualChanged.value = untouched && exported ? exported.changed : mjml.value !== saved.mjml
+  visualSourceDirty.value = untouched && exported ? exported.changed : mjml.value !== saved.mjml
+  visualEdited.value = false
   mode.value = 'visual'
 }
 
@@ -266,8 +359,23 @@ function onModeChange(value: string | number) {
   if (next.success) void switchMode(next.data)
 }
 
-function onVisualReady(api: VisualEditorApi) {
+function onVisualReady(api: TemplaticalEditorApi) {
   visualApi.value = api
+}
+
+function onVisualChange(edited: boolean) {
+  visualEdited.value = edited
+}
+
+/** Liquid tags the visual editor would lose; the editor reports anything else once it opens. */
+async function unsupportedLogicIn(source: string): Promise<number> {
+  const { MjmlBlockImporter } = await import('#shared/templates/MjmlBlockImporter')
+
+  try {
+    return new MjmlBlockImporter().import(source).unsupportedLogic
+  } catch {
+    return 0
+  }
 }
 
 function blurTarget(event: KeyboardEvent) {
@@ -289,15 +397,9 @@ function closePanelAfterInsert() {
   panelOpen.value = false
 }
 
+/** Code editor only: the visual editor has its own image picker. */
 function onInsertImage(url: string, alt: string) {
-  if (mode.value === 'visual') {
-    visualApi.value?.insertImage(url, alt)
-  } else {
-    codeEditor.value?.insertAtCursor(
-      `<mj-image src="${escapeAttr(url)}" alt="${escapeAttr(alt)}" />`
-    )
-  }
-
+  codeEditor.value?.insertAtCursor(`<mj-image src="${escapeAttr(url)}" alt="${escapeAttr(alt)}" />`)
   closePanelAfterInsert()
 }
 
@@ -433,7 +535,12 @@ const metaFieldUi = {
             :ui="{ label: 'max-sm:sr-only' }"
             @update:model-value="onModeChange"
           />
-          <UFieldGroup class="hidden sm:inline-flex" aria-label="Preview width">
+          <!-- The visual editor has its own desktop / mobile switch. -->
+          <UFieldGroup
+            v-if="mode === 'code' || !canEdit"
+            class="hidden sm:inline-flex"
+            aria-label="Preview width"
+          >
             <UTooltip text="Desktop preview">
               <UButton
                 icon="i-lucide-monitor"
@@ -515,21 +622,17 @@ const metaFieldUi = {
           :device="device"
         />
 
-        <LazyTemplatesMjmlVisualEditor
+        <LazyTemplatesTemplaticalEditor
           v-else-if="mode === 'visual'"
           :mjml="visualSource.mjml"
           :design="visualSource.design"
-          :device="device"
+          :kind="initial.kind"
           :can-upload="canUpload"
-          class="flex-1 min-w-0"
+          class="flex-1"
           @ready="onVisualReady"
-          @change="visualChanged = true"
-          @save="save"
-        >
-          <template #panel>
-            <TemplatesSidePanel @insert-image="onInsertImage" />
-          </template>
-        </LazyTemplatesMjmlVisualEditor>
+          @change="onVisualChange"
+          @failed="visualFailed = true"
+        />
 
         <template v-else>
           <LazyTemplatesMjmlCodeEditor
