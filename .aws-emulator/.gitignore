@@ -1,0 +1,3 @@
+# Per-run emulator files (config, credentials, CA): never commit them
+*
+!.gitignore

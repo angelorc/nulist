@@ -16,7 +16,7 @@ export const sendingSettingsSchema = z.object({
   ses: z.object({
     region: z.string().trim().max(40),
     accessKeyId: z.string().trim().max(128),
-    secretAccessKey: z.string().max(256),
+    secretAccessKey: z.string().trim().max(256),
     configurationSet: z.string().trim().max(64)
   }),
   smtp: z.object({
@@ -44,7 +44,7 @@ export const storageSettingsSchema = z.object({
   region: z.string().trim().max(40),
   bucket: z.string().trim().max(63),
   accessKeyId: z.string().trim().max(128),
-  secretAccessKey: z.string().max(256),
+  secretAccessKey: z.string().trim().max(256),
   publicUrl: httpUrlOrEmpty,
   forcePathStyle: z.boolean()
 })
