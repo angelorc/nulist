@@ -49,8 +49,6 @@
     "domhandler": "5.0.3",
     "drizzle-orm": "^0.45.4",
     "entities": "7.0.1",
-    "grapesjs": "^0.23.9",
-    "grapesjs-mjml": "^1.0.8",
     "html-to-text": "^10.0.1",
     "jose": "^6.2.16",
     "liquidjs": "^10.30.1",

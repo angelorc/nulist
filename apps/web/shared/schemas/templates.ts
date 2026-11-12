@@ -166,24 +166,12 @@ export interface TemplateSummaryDto {
 export interface TemplateDto extends Omit<TemplateSummaryDto, 'previewHtml'> {
   mjml: string
   html: string | null
-  /** GrapesJS project data of the visual editor. */
+  /** The visual editor's document (older templates may hold GrapesJS data, rebuilt on open). */
   design: TemplateDesign | null
 }
 
 export interface TemplateSaveResult extends TemplateDto {
   warnings: TemplateIssue[]
-}
-
-/** What the visual editor hands back on save. */
-export interface VisualEditorContent {
-  mjml: string
-  design: TemplateDesign
-}
-
-/** Handle the visual editor hands to its page once GrapesJS has loaded. */
-export interface VisualEditorApi {
-  getContent: () => VisualEditorContent | null
-  insertImage: (url: string, alt?: string) => void
 }
 
 export interface TemplateTestResult {

@@ -28,7 +28,7 @@ Postgres database.
 | Auth           | Better Auth via `@nuxtjs/better-auth` (+ API key plugin) |
 | Background     | Workflow DevKit with the Postgres world                  |
 | Email          | Amazon SES v2, Nodemailer (SMTP), MJML, LiquidJS         |
-| Editor         | GrapesJS + `grapesjs-mjml`, CodeMirror                   |
+| Editor         | Templatical, CodeMirror                                  |
 | Storage        | Any S3-compatible bucket                                 |
 | Validation     | Zod 4, shared between client and server                  |
 

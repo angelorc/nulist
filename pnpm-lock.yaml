@@ -101,12 +101,6 @@ importers:
       entities:
         specifier: 7.0.1
         version: 7.0.1
-      grapesjs:
-        specifier: ^0.23.9
-        version: 0.23.9
-      grapesjs-mjml:
-        specifier: ^1.0.8
-        version: 1.0.8
       html-to-text:
         specifier: ^10.0.1
         version: 10.0.1
@@ -3162,9 +3156,6 @@ packages:
   '@tybys/wasm-util@0.10.4':
     resolution: {integrity: sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A==}
 
-  '@types/backbone@1.4.15':
-    resolution: {integrity: sha512-WWeKtYlsIMtDyLbbhkb96taJMEbfQBnuz7yw1u0pkphCOtksemoWhIXhK74VRCY9hbjnsH3rsJu2uUiFtnsEYg==}
-
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -3213,17 +3204,8 @@ packages:
   '@types/interpret@1.1.4':
     resolution: {integrity: sha512-r+tPKWHYqaxJOYA3Eik0mMi+SEREqOXLmsooRFmc6GHv7nWUDixFtKN+cegvsPlDcEZd9wxsdp041v2imQuvag==}
 
-  '@types/jquery@4.0.1':
-    resolution: {integrity: sha512-9a59A/tycXgYuPABcp6/3spSShn0NT2UOM4EfHvMumjYi4lJWTsK5SZWjhx3yRm9IHGCeWXdV2YfNsrWrft/CA==}
-
-  '@types/mjml-core@4.15.2':
-    resolution: {integrity: sha512-Q7SxFXgoX979HP57DEVsRI50TV8x1V4lfCA4Up9AvfINDM5oD/X9ARgfoyX1qS987JCnDLv85JjkqAjt3hZSiQ==}
-
   '@types/mjml-core@5.1.1':
     resolution: {integrity: sha512-H3ycAWAk7LCLUqX/uLVbrndU9zZ93tcjbfmrAoe2lsPw+lEpiLl0Gi6vYNXEcY7Ww/tv/oXm/9HkAGYWyY1TTw==}
-
-  '@types/mjml@4.18.2':
-    resolution: {integrity: sha512-lqV9xLRNB0D4u5gCKtBVZG+nbf2KuU41YOO3G/3+cFf7dDhD7k8UowXAk+9kaivfbL/9EFx68ryaVijZYzPwSw==}
 
   '@types/mjml@5.4.2':
     resolution: {integrity: sha512-f3Ueveyh+m1gD5jYVbUJhHAGBIhexi+N+XHqiuCyfkWixOWSiUTNSxuGt/NGlxNNePlqgV3BeJFsquGQQfXN7A==}
@@ -3254,9 +3236,6 @@ packages:
 
   '@types/semver@7.8.0':
     resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
-
-  '@types/underscore@1.13.0':
-    resolution: {integrity: sha512-L6LBgy1f0EFQZ+7uSA57+n2g/s4Qs5r06Vwrwn0/nuK1de+adz00NWaztRQ30aEqw5qOaWbPI8u2cGQ52lj6VA==}
 
   '@types/web-bluetooth@0.0.20':
     resolution: {integrity: sha512-g9gZnnXVq7gM7v3tJCWV/qw7w+KeOlSHAhgF9RytFyifW6AF61hdT2ucrYhPq9hLs5JIryeupHV3qGk95dH9ow==}
@@ -3856,9 +3835,6 @@ packages:
       react-native-b4a:
         optional: true
 
-  backbone@1.4.1:
-    resolution: {integrity: sha512-ADy1ztN074YkWbHi8ojJVFe3vAanO/lrzMGZWUClIP7oDD/Pjy2vrASraUP+2EVCfIiTtCW4FChVow01XneivA==}
-
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
@@ -4195,12 +4171,6 @@ packages:
   cluster-key-slot@1.1.1:
     resolution: {integrity: sha512-rwHwUfXL40Chm1r08yrhU3qpUvdVlgkKNeyeGPOxnW8/SyVDvgRaed/Uz54AqWNaTCAThlj6QAs3TZcKI0xDEw==}
     engines: {node: '>=0.10.0'}
-
-  codemirror-formatting@1.0.0:
-    resolution: {integrity: sha512-br9yM6eJI3pJHekEnoyHaBEb1B7XxxDjju+vRyBe8QGLp5saTIXXkZ+eFCTqXSAtI8QEZDFVEX2/SOjH2sVWRQ==}
-
-  codemirror@5.63.0:
-    resolution: {integrity: sha512-KlLWRPggDg2rBD1Mx7/EqEhaBdy+ybBCVh/efgjBDsPpMeEu6MbTAJzIT4TuCzvmbTEgvKOGzVT6wdBTNusqrg==}
 
   codemirror@6.0.2:
     resolution: {integrity: sha512-VhydHotNW5w1UGK0Qj96BwSk/Zqbp9WbnyK2W/eVMv4QyF41INRGpjUhFJY7/uDNuudSc33a/PKr4iDqRduvHw==}
@@ -5330,12 +5300,6 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
-  grapesjs-mjml@1.0.8:
-    resolution: {integrity: sha512-cgaKwuGcBVgFCyqqK39kraPfw5DiA8qIyHKsDoMpOUqPY+ubMznx6U2M1NC9UKwD+gDCy/VVctyhb/aJAgyPNw==}
-
-  grapesjs@0.23.9:
-    resolution: {integrity: sha512-YUJEETGQDSsz8pSyJCj68EPgYKThDZNoNA9+Lu10/XP/7no86gmKdS+F6kEyL49Yf8H1+KARIvH4K+1acXto3Q==}
-
   graphile-config@0.0.1-beta.18:
     resolution: {integrity: sha512-uMdF9Rt8/NwT1wVXNleYgM5ro2hHDodHiKA3efJhgdU8iP+r/hksnghOHreMva0sF5tV73f4TpiELPUR0g7O9w==}
     engines: {node: '>=16'}
@@ -6001,9 +5965,6 @@ packages:
 
   mjml-body@5.4.1:
     resolution: {integrity: sha512-CuQjys9nV9wafYxI5MhdVTR0I9uoW6WgGsVEHCjZ/9W/2jQ16Y6i+RVrCqACgEU8vniUh6o9HlbVmWwdyNdpCw==}
-
-  mjml-browser@4.18.0:
-    resolution: {integrity: sha512-Y3kpr3IFBk3Wm7AwONZ5vDAX7FxAaMk+RKbcKKewsuGI9oNCOSM2dWNcWVFdzZ9PF7awoaCgBSQudnJaJbUiBA==}
 
   mjml-button@5.4.1:
     resolution: {integrity: sha512-QJfYgJNQ7l6gJvDdz6pksJoKXUCdbA1BRn0SUdUUj6Vbja80F21rizgwaBjYkGW8MNH5FeHm92EQ8zpNVHmWVw==}
@@ -7471,9 +7432,6 @@ packages:
         optional: true
       unplugin:
         optional: true
-
-  underscore@1.13.8:
-    resolution: {integrity: sha512-DXtD3ZtEQzc7M8m4cXotyHR+FAS18C64asBYY5vqZexfYryNNnDc02W4hKg3rdQuqOYas1jkseX0+nZXjTXnvQ==}
 
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
@@ -11061,11 +11019,6 @@ snapshots:
       tslib: 2.9.1
     optional: true
 
-  '@types/backbone@1.4.15':
-    dependencies:
-      '@types/jquery': 4.0.1
-      '@types/underscore': 1.13.0
-
   '@types/chai@5.2.3':
     dependencies:
       '@types/deep-eql': 4.0.2
@@ -11113,15 +11066,7 @@ snapshots:
     dependencies:
       '@types/node': 22.20.5
 
-  '@types/jquery@4.0.1': {}
-
-  '@types/mjml-core@4.15.2': {}
-
   '@types/mjml-core@5.1.1': {}
-
-  '@types/mjml@4.18.2':
-    dependencies:
-      '@types/mjml-core': 4.15.2
 
   '@types/mjml@5.4.2':
     dependencies:
@@ -11156,8 +11101,6 @@ snapshots:
   '@types/resolve@1.20.2': {}
 
   '@types/semver@7.8.0': {}
-
-  '@types/underscore@1.13.0': {}
 
   '@types/web-bluetooth@0.0.20': {}
 
@@ -12132,10 +12075,6 @@ snapshots:
 
   b4a@1.9.0: {}
 
-  backbone@1.4.1:
-    dependencies:
-      underscore: 1.13.8
-
   balanced-match@1.0.2: {}
 
   balanced-match@4.0.4: {}
@@ -12476,10 +12415,6 @@ snapshots:
     optional: true
 
   cluster-key-slot@1.1.1: {}
-
-  codemirror-formatting@1.0.0: {}
-
-  codemirror@5.63.0: {}
 
   codemirror@6.0.2:
     dependencies:
@@ -13494,19 +13429,6 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  grapesjs-mjml@1.0.8:
-    dependencies:
-      '@types/mjml': 4.18.2
-      mjml-browser: 4.18.0
-
-  grapesjs@0.23.9:
-    dependencies:
-      '@types/backbone': 1.4.15
-      backbone: 1.4.1
-      codemirror: 5.63.0
-      codemirror-formatting: 1.0.0
-      underscore: 1.13.8
-
   graphile-config@0.0.1-beta.18(supports-color@8.1.1):
     dependencies:
       '@types/interpret': 1.1.4
@@ -14122,8 +14044,6 @@ snapshots:
       - terser
       - typescript
       - uncss
-
-  mjml-browser@4.18.0: {}
 
   mjml-button@5.4.1(svgo@4.1.0)(terser@5.51.2)(typescript@6.0.3):
     dependencies:
@@ -16173,8 +16093,6 @@ snapshots:
       magic-string: 1.4.5
       rolldown: 1.2.16
       unplugin: 3.7.0(esbuild@0.28.2)(rolldown@1.2.16)(rollup@4.68.0)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
-
-  underscore@1.13.8: {}
 
   undici-types@6.21.0: {}
 
