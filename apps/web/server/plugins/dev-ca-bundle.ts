@@ -9,6 +9,7 @@ export default defineNitroPlugin(() => {
   if (!import.meta.dev) return
 
   const bundle = process.env.AWS_CA_BUNDLE
+
   if (!bundle) return
 
   try {
