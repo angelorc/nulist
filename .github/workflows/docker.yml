@@ -25,15 +25,8 @@ env:
 
 jobs:
   image:
-    name: Build & push (${{ matrix.target }})
+    name: Build & push
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - target: runtime
-            suffix: ''
-          - target: migrate
-            suffix: '-migrate'
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
@@ -46,7 +39,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.suffix }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}},value=${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
@@ -56,12 +49,12 @@ jobs:
       - uses: docker/build-push-action@v7
         with:
           context: .
-          target: ${{ matrix.target }}
+          target: runtime
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.target }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+          cache-from: type=gha,scope=runtime
+          cache-to: type=gha,mode=max,scope=runtime
 
   release:
     name: GitHub release

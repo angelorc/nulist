@@ -21,18 +21,7 @@ RUN pnpm turbo run build --filter=@nulist/web \
  && find apps/web/.output -name '*.map' -delete \
  && pnpm --filter @nulist/web build:migrate
 
-# --- One-shot migrations: Drizzle schema + workflow (graphile-worker) tables --
-FROM gcr.io/distroless/nodejs${NODE_VERSION}-debian13 AS migrate
-WORKDIR /app
-
-COPY --from=build /repo/apps/web/dist/migrate ./scripts
-COPY --from=build /repo/apps/web/server/db/migrations ./server/db/migrations
-COPY --from=build /repo/apps/web/node_modules/@workflow/world-postgres/src/drizzle/migrations ./src/drizzle/migrations
-
-USER nonroot
-CMD ["scripts/migrate.mjs"]
-
-# --- Runtime: the self-contained Nitro output only ----------------------------
+# --- Runtime: Nitro output + bundled migrator (scripts/migrate.mjs) -----------
 FROM gcr.io/distroless/nodejs${NODE_VERSION}-debian13 AS runtime
 WORKDIR /app
 
@@ -45,6 +34,9 @@ ENV NODE_ENV=production \
     NODE_PATH=/app/.output/server/node_modules
 
 COPY --from=build --chown=nonroot:nonroot /repo/apps/web/.output ./.output
+COPY --from=build /repo/apps/web/dist/migrate ./scripts
+COPY --from=build /repo/apps/web/server/db/migrations ./server/db/migrations
+COPY --from=build /repo/apps/web/node_modules/@workflow/world-postgres/src/drizzle/migrations ./src/drizzle/migrations
 
 USER nonroot
 EXPOSE 3000
