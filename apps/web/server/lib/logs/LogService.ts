@@ -221,6 +221,7 @@ export class LogService {
           )
         : undefined,
       query.status ? eq(ie.status, query.status) : undefined,
+      query.eventType ? eq(ie.eventType, query.eventType) : undefined,
       from ? gte(ie.createdAt, from) : undefined
     )
 

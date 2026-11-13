@@ -5,7 +5,7 @@ import type { JsonValue } from '#shared/types/domain'
 import type { InboundEventDetail, InboundEventItem } from '#shared/types/logs'
 import type { DetailRow } from './DetailList.vue'
 import type { LogTab } from './Panel.vue'
-import { selectedEntrySchema, snsNotificationSchema } from '#shared/schemas/logs'
+import { SES_EVENT_TYPES, selectedEntrySchema, snsNotificationSchema } from '#shared/schemas/logs'
 
 const tab = defineModel<LogTab>('tab', { required: true })
 
@@ -37,8 +37,13 @@ const EVENT_ICONS = new Map([
   ['Subscription', 'i-lucide-user-minus']
 ])
 
+const EVENT_ITEMS = [
+  { label: 'All events', value: 'all' },
+  ...SES_EVENT_TYPES.map((value) => ({ label: value, value, icon: EVENT_ICONS.get(value) }))
+]
+
 /** Filter values as the selects hold them (`all` means no filter). */
-type InboundEventFilters = { status?: string; period?: string }
+type InboundEventFilters = { eventType?: string; status?: string; period?: string }
 
 const {
   page,
@@ -53,7 +58,7 @@ const {
   isFiltered,
   clearFilters
 } = usePaginatedList<InboundEventItem, InboundEventFilters>('/api/logs/inbound', {
-  filters: { status: undefined, period: undefined }
+  filters: { eventType: undefined, status: undefined, period: undefined }
 })
 
 const route = useRoute()
@@ -200,6 +205,14 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
         </template>
       </UInput>
       <USelect
+        v-model="filters.eventType"
+        :items="EVENT_ITEMS"
+        placeholder="All events"
+        size="sm"
+        class="w-44"
+        aria-label="Filter by event type"
+      />
+      <USelect
         v-model="filters.status"
         :items="STATUS_ITEMS"
         placeholder="All statuses"
@@ -265,7 +278,7 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
       v-else-if="isFiltered"
       variant="no-results"
       title="No events match your filters"
-      description="Try another status or a wider time range."
+      description="Try another event type, status or a wider time range."
     >
       <UButton label="Clear filters" variant="outline" @click="clearFilters" />
     </EmptyState>
