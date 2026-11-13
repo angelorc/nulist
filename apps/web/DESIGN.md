@@ -95,6 +95,7 @@ Negative letter-spacing only at 20px and above.
   - **Messaging** — Broadcasts, Transactional, Templates, Files
   - **Insights** — Logs, Audit log
   - Bottom: Webhooks, Settings, user menu (theme, sign out)
+  - No divider above the user menu.
 - `⌘K` (`UDashboardSearch`): navigation + actions ("New broadcast", "Import contacts",
   "Add contact") + contact search by email.
 
