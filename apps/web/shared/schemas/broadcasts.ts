@@ -50,9 +50,15 @@ export const broadcastUpdateSchema = z
 
 export type BroadcastUpdateInput = z.infer<typeof broadcastUpdateSchema>
 
-export const broadcastCreateSchema = broadcastUpdateSchema.extend({
-  name: z.string().trim().min(1).max(120).default('Untitled broadcast')
-})
+export const UNTITLED_BROADCAST = 'Untitled broadcast'
+
+export function broadcastNameFallback(name?: string | null, subject?: string | null): string {
+  return name?.trim() || subject?.trim().slice(0, 120).trim() || UNTITLED_BROADCAST
+}
+
+export const broadcastCreateSchema = broadcastUpdateSchema
+  .extend({ name: z.string().trim().max(120).optional() })
+  .transform((input) => ({ ...input, name: broadcastNameFallback(input.name, input.subject) }))
 
 export type BroadcastCreateInput = z.infer<typeof broadcastCreateSchema>
 
