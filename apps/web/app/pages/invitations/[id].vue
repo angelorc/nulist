@@ -2,14 +2,13 @@
 import { z } from 'zod'
 import type { FormSubmitEvent, TabsItem } from '@nuxt/ui'
 import { roleLabel } from '#shared/auth/permissions'
-import { INVITATION_HEADER } from '#shared/schemas/members'
 import type { ActiveOrganizationChange, InvitationDetails } from '#shared/schemas/members'
 
 /**
  * Invitation landing page (public: `/invitations/**` has no auth rule).
- * Signed out: sign in, or create an account with the invited email (sign-up
- * is invitation only), then the invitation is accepted. Signed in as the
- * invited email: accept or decline. Signed in as someone else: switch account.
+ * Signed out: continue with the invited Google account (in development also
+ * email and password), then accept. Signed in as the invited email: accept or
+ * decline. Signed in as someone else: switch account.
  */
 definePageMeta({ layout: 'auth' })
 
@@ -127,6 +126,15 @@ type SignInInput = z.output<typeof signInSchema>
 
 type SignUpInput = z.output<typeof signUpSchema>
 
+const passwordEnabled = import.meta.dev
+
+const google = useGoogleSignIn(() => ({
+  callbackURL: `/invitations/${invitationId}`,
+  label: `Continue as ${invitation.value?.email ?? 'the invited account'}`
+}))
+
+const providers = computed(() => [google.provider.value])
+
 const signIn = useSignIn('email')
 const signUp = useSignUp('email')
 
@@ -192,8 +200,7 @@ async function onSignUp(event: FormSubmitEvent<SignUpInput>) {
       email: invitation.value?.email ?? event.data.email,
       password: event.data.password
     },
-    // Sign-up is bound to this invitation: the server checks the id from the link.
-    { headers: { [INVITATION_HEADER]: invitationId }, onSuccess: accept }
+    { onSuccess: accept }
   )
 }
 </script>
@@ -263,6 +270,19 @@ async function onSignUp(event: FormSubmitEvent<SignUpInput>) {
       />
     </div>
 
+    <div v-else-if="!passwordEnabled" class="flex flex-col gap-3">
+      <UAlert
+        v-if="google.failure.value"
+        color="error"
+        icon="i-lucide-circle-alert"
+        :title="google.failure.value"
+      />
+      <UButton v-bind="google.provider.value" />
+      <p class="text-center text-[13px] text-muted">
+        Sign in with the Google account of {{ invitation?.email }} to accept.
+      </p>
+    </div>
+
     <UTabs
       v-else
       v-model="activeTab"
@@ -277,6 +297,7 @@ async function onSignUp(event: FormSubmitEvent<SignUpInput>) {
         <UAuthForm
           :schema="signUpSchema"
           :fields="signUpFields"
+          :providers="providers"
           description="Choose a password to create your account and join."
           :submit="{ label: 'Create account and join', block: true }"
           :loading="signUp.status.value === 'pending' || responding"
@@ -297,6 +318,7 @@ async function onSignUp(event: FormSubmitEvent<SignUpInput>) {
         <UAuthForm
           :schema="signInSchema"
           :fields="signInFields"
+          :providers="providers"
           description="Already have an account? Sign in to accept."
           :submit="{ label: 'Sign in and join', block: true }"
           :loading="signIn.status.value === 'pending' || responding"

@@ -50,6 +50,9 @@ importers:
       '@iconify-json/lucide':
         specifier: ^1.2.152
         version: 1.2.152
+      '@iconify-json/simple-icons':
+        specifier: ^1.2.102
+        version: 1.2.102
       '@nuxt/ui':
         specifier: ^4.12.0
         version: 4.12.0(3a477967488e16ed99b3d3852c6fc2bd)
@@ -1385,6 +1388,9 @@ packages:
 
   '@iconify-json/lucide@1.2.152':
     resolution: {integrity: sha512-OQTsOaQ+kD8yhy5EATMD5QHe5O+XJVibExdaRCaXP3hvNPNkn6wVUcTrGA16yU2luqe0ImE4qP74WBK8JuwwNA==}
+
+  '@iconify-json/simple-icons@1.2.102':
+    resolution: {integrity: sha512-IwbAj1ZI6LBy+qU7sVYxB1wgbSSIDKjY9I0BnnpjfIdlqfXoYnBb80UvYA0WkodUFWfQyL4AjaKMg48fqX8sIw==}
 
   '@iconify/collections@1.0.762':
     resolution: {integrity: sha512-YKx0whVsIbWMZRjyVHxhBrobnRFSAa1Sb1u6cL0herB99ZrTQ/D9BqI7fVCb70Xkdv/oOuyi3luG6hOtKTkY5A==}
@@ -9354,6 +9360,10 @@ snapshots:
   '@graphile/logger@0.2.0': {}
 
   '@iconify-json/lucide@1.2.152':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/simple-icons@1.2.102':
     dependencies:
       '@iconify/types': 2.0.0
 

@@ -25,12 +25,6 @@ export type InvitationCreateInput = z.output<typeof invitationCreateSchema>
 
 export const invitationResponseSchema = z.object({ action: z.enum(['accept', 'reject']) })
 
-/**
- * Sign-up request header carrying the invitation id from the emailed link. Sign-up is
- * invitation only, and holding the link is what proves the invitee owns the mailbox.
- */
-export const INVITATION_HEADER = 'x-nulist-invitation'
-
 export type InvitationResponseInput = z.infer<typeof invitationResponseSchema>
 
 /** Better Auth invitation states. */

@@ -73,19 +73,20 @@ In development, mail goes to Mailpit (<http://localhost:8026>) and files to Rust
 
 ## Configuration
 
-| Variable                                         | Description                                                                   |
-| ------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `NUXT_DATABASE_URL`                              | Postgres connection string                                                    |
-| `NUXT_PUBLIC_SITE_URL`                           | Public URL, used for auth and links in emails                                 |
-| `NUXT_BETTER_AUTH_SECRET`, `NUXT_APP_SECRET`     | Random secrets of at least 32 characters (`openssl rand -base64 48`)          |
-| `NUXT_SNS_TOPIC_ARNS`                            | SNS topics allowed to post SES events (comma-separated)                       |
-| `NULIST_TRUSTED_PROXIES`                         | Proxies whose `X-Forwarded-For` is trusted (IPs, CIDRs or `loopback`)         |
-| `NULIST_ALLOW_PRIVATE_TARGETS`                   | Let webhooks, SMTP and S3 reach private networks (default `false`)            |
-| `NULIST_ALLOWED_TARGETS`                         | Private hosts allowed anyway                                                  |
-| `NULIST_SMTP_HOST`, `NULIST_SMTP_PORT`           | Instance-wide default SMTP server                                             |
-| `NULIST_S3_*`                                    | Instance-wide default S3 storage (endpoint, region, bucket, keys, public URL) |
-| `WORKFLOW_TARGET_WORLD`, `WORKFLOW_POSTGRES_URL` | Workflow backend (`@workflow/world-postgres`) and its database                |
-| `WORKFLOW_POSTGRES_WORKER_CONCURRENCY`           | Concurrent workflow steps; keep ≤ `WORKFLOW_POSTGRES_MAX_POOL_SIZE`           |
+| Variable                                         | Description                                                                         |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `NUXT_DATABASE_URL`                              | Postgres connection string                                                          |
+| `NUXT_PUBLIC_SITE_URL`                           | Public URL, used for auth and links in emails                                       |
+| `NUXT_BETTER_AUTH_SECRET`, `NUXT_APP_SECRET`     | Random secrets of at least 32 characters (`openssl rand -base64 48`)                |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`       | Google OAuth client; redirect URI `<NUXT_PUBLIC_SITE_URL>/api/auth/callback/google` |
+| `NUXT_SNS_TOPIC_ARNS`                            | SNS topics allowed to post SES events (comma-separated)                             |
+| `NULIST_TRUSTED_PROXIES`                         | Proxies whose `X-Forwarded-For` is trusted (IPs, CIDRs or `loopback`)               |
+| `NULIST_ALLOW_PRIVATE_TARGETS`                   | Let webhooks, SMTP and S3 reach private networks (default `false`)                  |
+| `NULIST_ALLOWED_TARGETS`                         | Private hosts allowed anyway                                                        |
+| `NULIST_SMTP_HOST`, `NULIST_SMTP_PORT`           | Instance-wide default SMTP server                                                   |
+| `NULIST_S3_*`                                    | Instance-wide default S3 storage (endpoint, region, bucket, keys, public URL)       |
+| `WORKFLOW_TARGET_WORLD`, `WORKFLOW_POSTGRES_URL` | Workflow backend (`@workflow/world-postgres`) and its database                      |
+| `WORKFLOW_POSTGRES_WORKER_CONCURRENCY`           | Concurrent workflow steps; keep ≤ `WORKFLOW_POSTGRES_MAX_POOL_SIZE`                 |
 
 For production, see the Docker setup in the [root README](../../README.md#production).
 

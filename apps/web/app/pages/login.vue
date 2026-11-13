@@ -17,7 +17,6 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>
 
-/** Same-origin path to return to after signing in ("//host" and "/\\host" are refused). */
 const redirectSchema = z
   .string()
   .regex(/^\/(?![/\\])/)
@@ -27,24 +26,34 @@ const route = useRoute()
 const organization = useOrganization()
 const { execute, status, error } = useSignIn('email')
 
-const fields = [
-  {
-    name: 'email',
-    autocomplete: 'email',
-    type: 'email' as const,
-    label: 'Email',
-    placeholder: 'you@company.com',
-    required: true
-  },
-  {
-    name: 'password',
-    autocomplete: 'current-password',
-    type: 'password' as const,
-    label: 'Password',
-    placeholder: '••••••••••',
-    required: true
-  }
-]
+const google = useGoogleSignIn(() => ({
+  callbackURL: redirectSchema.parse(route.query.redirect)
+}))
+
+const passwordEnabled = import.meta.dev
+
+const providers = computed(() => (setup.value?.googleEnabled ? [google.provider.value] : []))
+
+const fields = passwordEnabled
+  ? [
+      {
+        name: 'email',
+        autocomplete: 'email',
+        type: 'email' as const,
+        label: 'Email',
+        placeholder: 'you@company.com',
+        required: true
+      },
+      {
+        name: 'password',
+        autocomplete: 'current-password',
+        type: 'password' as const,
+        label: 'Password',
+        placeholder: '••••••••••',
+        required: true
+      }
+    ]
+  : []
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   const redirect = redirectSchema.parse(route.query.redirect)
@@ -53,7 +62,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     { email: event.data.email, password: event.data.password, rememberMe: true },
     {
       onSuccess: async () => {
-        // A previous user's organization context must not leak into this session.
         organization.clear()
         await navigateTo(redirect)
       }
@@ -67,6 +75,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     <UAuthForm
       :schema="schema"
       :fields="fields"
+      :providers="providers"
       description="Sign in with your account. Invited? Open the link in your invitation email."
       :submit="{ label: 'Continue', block: true }"
       :loading="status === 'pending'"
@@ -81,6 +90,17 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           color="error"
           icon="i-lucide-circle-alert"
           :title="error.message ?? 'Invalid email or password'"
+        />
+      </template>
+      <template v-if="google.failure.value" #footer>
+        <UAlert color="error" icon="i-lucide-circle-alert" :title="google.failure.value" />
+      </template>
+      <template v-else-if="!setup?.googleEnabled && !passwordEnabled" #footer>
+        <UAlert
+          color="warning"
+          icon="i-lucide-triangle-alert"
+          title="Google sign-in is not configured"
+          description="Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on the server."
         />
       </template>
     </UAuthForm>

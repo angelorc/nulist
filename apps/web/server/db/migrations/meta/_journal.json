@@ -57,6 +57,13 @@
       "when": 1794529311896,
       "tag": "0007_saved_colors",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794534294468,
+      "tag": "0008_instance_settings",
+      "breakpoints": true
     }
   ]
 }
