@@ -23,6 +23,18 @@ export const MESSAGE_STATUSES = [
   'cancelled'
 ] as const
 
+export const EMAIL_OUTCOMES = ['delivered', 'in_flight', 'issues', 'skipped'] as const
+
+export const EMAIL_OUTCOME_STATUSES = {
+  delivered: ['delivered', 'sent'],
+  in_flight: ['queued', 'scheduled', 'sending', 'delayed'],
+  issues: ['bounced', 'complained', 'failed', 'rejected'],
+  skipped: ['suppressed', 'cancelled']
+} as const satisfies Record<
+  (typeof EMAIL_OUTCOMES)[number],
+  readonly (typeof MESSAGE_STATUSES)[number][]
+>
+
 export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
 
 export const STATUS_CLASSES = ['2xx', '3xx', '4xx', '5xx'] as const
@@ -42,6 +54,7 @@ export const SES_EVENT_TYPES = [
 
 export const emailLogQuerySchema = paginationSchema.extend({
   status: z.enum(MESSAGE_STATUSES).optional(),
+  outcome: z.enum(EMAIL_OUTCOMES).optional(),
   kind: z.enum(['broadcast', 'transactional', 'system']).optional(),
   broadcastId: z.uuid().optional(),
   contactId: z.uuid().optional(),
@@ -71,7 +84,9 @@ export type InboundEventQuery = z.infer<typeof inboundEventQuerySchema>
 
 export const auditQuerySchema = paginationSchema.extend({
   entityType: z.string().trim().min(1).max(64).optional(),
-  entityId: z.string().trim().min(1).max(128).optional()
+  entityId: z.string().trim().min(1).max(128).optional(),
+  actorType: z.enum(['user', 'api_key', 'system']).optional(),
+  period: z.enum(LOG_PERIODS).optional()
 })
 
 export const analyticsQuerySchema = z.object({

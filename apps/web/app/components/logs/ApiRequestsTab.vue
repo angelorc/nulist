@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { TableColumn, TableRow } from '@nuxt/ui'
 import type { JsonValue } from '#shared/types/domain'
-import type { ApiLogDetail, ApiLogItem } from '#shared/types/logs'
+import type { ApiLogDetail, ApiLogItem, ApiLogStats } from '#shared/types/logs'
 import type { DetailRow } from './DetailList.vue'
+import type { OverviewTile } from './Overview.vue'
 import type { LogTab } from './Panel.vue'
 import { selectedEntrySchema } from '#shared/schemas/logs'
 
@@ -47,6 +48,55 @@ const {
   filters: { method: undefined, status: undefined, period: undefined }
 })
 
+const { number, dateTime } = useFormat()
+
+const {
+  stats,
+  loading: statsLoading,
+  refresh: refreshStats
+} = useLogStats<ApiLogStats>('/api/logs/api/stats', q, filters, ['status'])
+
+const tiles = computed<OverviewTile[]>(() => {
+  const s = stats.value
+
+  return [
+    { key: 'all', label: 'All requests', value: s?.total ?? null, selectable: true },
+    {
+      key: '2xx',
+      label: 'Successful',
+      value: s?.facets['2xx'] ?? null,
+      tone: 'success',
+      selectable: true
+    },
+    {
+      key: '4xx',
+      label: 'Client errors',
+      value: s?.facets['4xx'] ?? null,
+      tone: 'warning',
+      selectable: true
+    },
+    {
+      key: '5xx',
+      label: 'Server errors',
+      value: s?.facets['5xx'] ?? null,
+      tone: 'error',
+      selectable: true
+    },
+    {
+      key: 'p95',
+      label: 'p95 latency',
+      value: s?.p95Ms ?? null,
+      display: s?.p95Ms == null ? '—' : `${number(s.p95Ms)} ms`,
+      hint: '95% of requests completed within this time.'
+    }
+  ]
+})
+
+function refreshAll() {
+  void refresh()
+  void refreshStats()
+}
+
 const route = useRoute()
 const router = useRouter()
 
@@ -72,8 +122,6 @@ const {
   },
   { server: false }
 )
-
-const { number, dateTime } = useFormat()
 
 const MethodBadge = resolveComponent('LogsMethodBadge')
 const StatusCode = resolveComponent('LogsStatusCode')
@@ -243,10 +291,19 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
           size="sm"
           aria-label="Refresh API requests"
           :loading="loading"
-          @click="() => refresh()"
+          @click="refreshAll"
         />
       </UTooltip>
     </template>
+
+    <LogsOverview
+      v-model:selected="filters.status"
+      title="Request volume"
+      :tiles="tiles"
+      :stats="stats"
+      :loading="statsLoading"
+      :series="{ ok: 'Successful', issues: 'Errors' }"
+    />
 
     <EmptyState
       v-if="error && !items.length"

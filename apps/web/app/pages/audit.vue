@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { TableColumn, TableRow } from '@nuxt/ui'
+import type { TableColumn } from '@nuxt/ui'
+import { format, isToday, isYesterday } from 'date-fns'
 import { z } from 'zod'
 import type { PermissionRequest } from '#shared/auth/permissions'
 import type { JsonValue } from '#shared/types/domain'
-import type { ActorType, AuditLogItem } from '#shared/types/logs'
+import type { AuditLogItem } from '#shared/types/logs'
 import type { DetailRow } from '~/components/logs/DetailList.vue'
 import { selectedEntrySchema } from '#shared/schemas/logs'
 
@@ -11,11 +12,22 @@ definePageMeta({ permission: { audit: ['read'] } })
 
 useSeoMeta({ title: 'Audit log' })
 
-const ACTOR: Record<ActorType, { icon: string; label: string }> = {
-  user: { icon: 'i-lucide-user', label: 'Member' },
-  api_key: { icon: 'i-lucide-key-round', label: 'API key' },
-  system: { icon: 'i-lucide-cpu', label: 'System' }
-}
+const ACTOR = AUDIT_ACTORS
+
+const ACTOR_ITEMS = [
+  { label: 'All actors', value: 'all' },
+  { label: 'Members', value: 'user', icon: ACTOR.user.icon },
+  { label: 'API keys', value: 'api_key', icon: ACTOR.api_key.icon },
+  { label: 'System', value: 'system', icon: ACTOR.system.icon }
+]
+
+const PERIOD_ITEMS = [
+  { label: 'Any time', value: 'all' },
+  { label: 'Last 24 hours', value: '24h' },
+  { label: 'Last 7 days', value: '7d' },
+  { label: 'Last 30 days', value: '30d' },
+  { label: 'Last 90 days', value: '90d' }
+]
 
 /** The page an audited entity lives on, and what the viewer needs to open it. */
 interface EntityLink {
@@ -80,7 +92,12 @@ const entityItems = computed(() => [
 ])
 
 /** Filter values as the select and the entity link hold them (`all` means no filter). */
-type AuditFilters = { entityType?: string; entityId?: string }
+type AuditFilters = {
+  entityType?: string
+  entityId?: string
+  actorType?: string
+  period?: string
+}
 
 const {
   page,
@@ -95,7 +112,7 @@ const {
   isFiltered,
   clearFilters
 } = usePaginatedList<AuditLogItem, AuditFilters>('/api/audit', {
-  filters: { entityType: undefined, entityId: undefined }
+  filters: { entityType: undefined, entityId: undefined, actorType: undefined, period: undefined }
 })
 
 const route = useRoute()
@@ -131,68 +148,39 @@ const entry = computed(
 
 const { dateTime } = useFormat()
 
-const UAvatar = resolveComponent('UAvatar')
-const UTooltip = resolveComponent('UTooltip')
-const TimeAgo = resolveComponent('TimeAgo')
+interface DayGroup {
+  key: string
+  label: string
+  entries: AuditLogItem[]
+}
 
-const columns: TableColumn<AuditLogItem>[] = [
-  {
-    accessorKey: 'createdAt',
-    header: 'Time',
-    meta: { class: { th: 'w-28', td: 'w-28 text-muted' } },
-    cell: ({ row }) => h(TimeAgo, { date: row.original.createdAt })
-  },
-  {
-    id: 'actor',
-    header: 'Actor',
-    meta: { class: { th: 'w-52 hidden md:table-cell', td: 'w-52 hidden md:table-cell' } },
-    cell: ({ row }) => {
-      const actor = ACTOR[row.original.actorType] ?? ACTOR.system
+function dayLabel(date: Date): string {
+  if (isToday(date)) return 'Today'
 
-      return h('div', { class: 'flex items-center gap-2 min-w-0' }, [
-        h(UTooltip, { text: actor.label }, () => h(UAvatar, { icon: actor.icon, size: 'xs' })),
-        h('span', { class: 'sr-only' }, `${actor.label}:`),
-        h('span', { class: 'truncate text-default' }, row.original.actorLabel ?? actor.label)
-      ])
-    }
-  },
-  {
-    accessorKey: 'action',
-    header: 'Action',
-    meta: { class: { th: 'w-48 hidden sm:table-cell', td: 'w-48 hidden sm:table-cell' } },
-    cell: ({ row }) =>
-      h('span', { class: 'block truncate font-mono text-xs text-highlighted' }, row.original.action)
-  },
-  {
-    accessorKey: 'summary',
-    header: 'Summary',
-    cell: ({ row }) =>
-      h(
-        'span',
-        { class: 'block truncate text-highlighted', title: row.original.summary },
-        row.original.summary
-      )
-  },
-  {
-    id: 'entity',
-    header: 'Entity',
-    meta: { class: { th: 'w-44 hidden lg:table-cell', td: 'w-44 hidden lg:table-cell' } },
-    cell: ({ row }) =>
-      h('div', { class: 'min-w-0' }, [
-        h('p', { class: 'truncate text-default' }, entityLabel(row.original.entityType)),
-        row.original.entityId
-          ? h(
-              'p',
-              { class: 'truncate font-mono text-xs text-muted', title: row.original.entityId },
-              shortId(row.original.entityId)
-            )
-          : null
-      ])
+  if (isYesterday(date)) return 'Yesterday'
+
+  return format(date, 'EEEE, d MMMM')
+}
+
+const groups = computed<DayGroup[]>(() => {
+  const byDay = new Map<string, DayGroup>()
+
+  for (const record of items.value) {
+    const date = new Date(record.createdAt)
+    const key = format(date, 'yyyy-MM-dd')
+    const group = byDay.get(key) ?? { key, label: dayLabel(date), entries: [] }
+
+    group.entries.push(record)
+    byDay.set(key, group)
   }
-]
 
-function onSelect(_event: Event, row: TableRow<AuditLogItem>) {
-  selectedId.value = String(row.original.id)
+  return [...byDay.values()]
+})
+
+const time = (value: string) => format(new Date(value), 'HH:mm')
+
+function select(record: AuditLogItem) {
+  selectedId.value = String(record.id)
 }
 
 const rowIds = computed(() => items.value.map((i) => String(i.id)))
@@ -320,6 +308,11 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
+        <template #trailing>
+          <span class="hidden md:inline text-[13px] text-muted truncate">
+            Who changed what, when and from where
+          </span>
+        </template>
       </UDashboardNavbar>
 
       <UDashboardToolbar
@@ -355,6 +348,23 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
             class="w-44"
             aria-label="Filter by entity type"
           />
+          <USelect
+            v-model="filters.actorType"
+            :items="ACTOR_ITEMS"
+            placeholder="All actors"
+            size="sm"
+            class="w-36"
+            aria-label="Filter by actor"
+          />
+          <USelect
+            v-model="filters.period"
+            :items="PERIOD_ITEMS"
+            placeholder="Any time"
+            icon="i-lucide-calendar"
+            size="sm"
+            class="w-40"
+            aria-label="Filter by time range"
+          />
           <UButton
             v-if="filters.entityId"
             :label="shortId(filters.entityId)"
@@ -389,11 +399,6 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
     </template>
 
     <template #body>
-      <p class="text-sm text-muted">
-        A record of every change made in nulist or through the API: who made it, what changed and
-        where the request came from.
-      </p>
-
       <EmptyState
         v-if="error && !items.length"
         variant="error"
@@ -407,16 +412,84 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
           @click="() => refresh()"
         />
       </EmptyState>
-      <UTable
-        v-else-if="loading || items.length"
-        :data="items"
-        :columns="columns"
-        :loading="loading"
-        sticky
-        :ui="tableUi"
-        class="shrink-0"
-        @select="onSelect"
-      />
+      <div
+        v-else-if="loading && !items.length"
+        class="space-y-2"
+        aria-busy="true"
+        aria-label="Loading the audit log"
+      >
+        <USkeleton class="h-4 w-24" />
+        <USkeleton v-for="n in 8" :key="n" class="h-14 w-full" />
+      </div>
+      <ClientOnly v-else-if="items.length">
+        <template #fallback>
+          <div class="space-y-2" aria-busy="true" aria-label="Loading the audit log">
+            <USkeleton class="h-4 w-24" />
+            <USkeleton v-for="n in 8" :key="n" class="h-14 w-full" />
+          </div>
+        </template>
+        <div
+          class="space-y-6 shrink-0 transition-opacity"
+          :class="loading && 'opacity-60'"
+          :aria-busy="loading || undefined"
+        >
+          <section v-for="group in groups" :key="group.key" :aria-labelledby="`day-${group.key}`">
+            <h2
+              :id="`day-${group.key}`"
+              class="mb-2 flex items-center gap-2 text-xs font-medium text-muted"
+            >
+              {{ group.label }}
+              <span class="tabular-nums text-dimmed">{{ group.entries.length }}</span>
+            </h2>
+            <ul class="rounded-lg ring ring-default divide-y divide-default overflow-hidden">
+              <li v-for="entry in group.entries" :key="entry.id">
+                <UButton
+                  variant="ghost"
+                  block
+                  class="rounded-none justify-start gap-3 px-3 py-2.5 text-left font-normal hover:bg-elevated/50"
+                  :class="selectedId === String(entry.id) && 'bg-elevated/60'"
+                  @click="select(entry)"
+                >
+                  <span
+                    class="grid size-8 shrink-0 place-items-center rounded-full bg-elevated ring ring-default"
+                    aria-hidden="true"
+                  >
+                    <UIcon
+                      :name="auditVerb(entry.action).icon"
+                      class="size-4"
+                      :class="auditVerb(entry.action).tone ?? 'text-muted'"
+                    />
+                  </span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm text-highlighted">{{ entry.summary }}</span>
+                    <span class="flex items-center gap-1.5 min-w-0 text-xs text-muted">
+                      <UIcon
+                        :name="ACTOR[entry.actorType]?.icon ?? 'i-lucide-cpu'"
+                        class="size-3.5 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <span class="truncate">{{
+                        entry.actorLabel ?? ACTOR[entry.actorType]?.label
+                      }}</span>
+                      <span aria-hidden="true">·</span>
+                      <span class="shrink-0">{{ entityLabel(entry.entityType) }}</span>
+                      <span class="hidden sm:inline" aria-hidden="true">·</span>
+                      <span class="hidden sm:inline truncate font-mono">{{ entry.action }}</span>
+                    </span>
+                  </span>
+                  <UTooltip :text="dateTime(entry.createdAt)">
+                    <time
+                      :datetime="entry.createdAt"
+                      class="shrink-0 text-xs text-muted tabular-nums"
+                      >{{ time(entry.createdAt) }}</time
+                    >
+                  </UTooltip>
+                </UButton>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </ClientOnly>
       <EmptyState
         v-else-if="isFiltered"
         variant="no-results"

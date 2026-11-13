@@ -13,7 +13,7 @@ import type { VNode } from 'vue'
 
 /**
  * Frame shared by the log views (DESIGN.md §4): the Logs navbar, the view tabs and the view's
- * own filter toolbar in the header; the view's description and content in the body.
+ * own filter toolbar in the header; the view content in the body.
  *
  * <LogsPanel v-model:tab="tab">
  *   <template #filters>search · selects</template>
@@ -38,10 +38,9 @@ const TABS = [
 ] satisfies TabsItem[]
 
 const DESCRIPTIONS: Record<LogTab, string> = {
-  emails:
-    'Every email nulist sent or tried to send, with its delivery timeline and rendered content.',
-  api: 'Requests made to the REST API with an API key, including the request and response payloads.',
-  events: 'Raw notifications received from Amazon SES through SNS, and how each one was handled.'
+  emails: 'Every email sent or attempted, with its delivery timeline',
+  api: 'REST API requests made with an API key',
+  events: 'Delivery, bounce, complaint, open and click notifications from Amazon SES'
 }
 
 function onTab(value: string | number) {
@@ -57,6 +56,11 @@ function onTab(value: string | number) {
       <UDashboardNavbar title="Logs">
         <template #leading>
           <UDashboardSidebarCollapse />
+        </template>
+        <template #trailing>
+          <span class="hidden md:inline text-[13px] text-muted truncate">
+            {{ DESCRIPTIONS[tab] }}
+          </span>
         </template>
       </UDashboardNavbar>
 
@@ -84,10 +88,6 @@ function onTab(value: string | number) {
     </template>
 
     <template #body>
-      <p class="text-sm text-muted">
-        {{ DESCRIPTIONS[tab] }}
-      </p>
-
       <slot />
     </template>
   </UDashboardPanel>

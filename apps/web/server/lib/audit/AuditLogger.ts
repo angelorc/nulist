@@ -1,13 +1,15 @@
-import { and, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
+import { and, count, desc, eq, gte, ilike, isNull, or } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Database, Executor } from '../../db/client'
 import { auditLogs } from '../../db/schema'
 import type { JsonObject, JsonValue } from '../../../shared/types/domain'
+import type { ActorType, LogPeriod } from '../../../shared/types/logs'
 import type { Actor } from '../core/actor'
 import { toJsonObject } from '../core/json'
 import { Page } from '../core/pagination'
 import { containsPattern } from '../core/sql'
 import type { TenantScope } from '../core/TenantScope'
+import { LogWindow } from '../logs/LogWindow'
 
 /**
  * One audit entry. `changes` is any JSON-serializable object: it is stored as
@@ -27,6 +29,8 @@ export interface AuditQuery {
   q?: string
   entityType?: string
   entityId?: string
+  actorType?: ActorType
+  period?: LogPeriod
 }
 
 export interface AuditFieldChange {
@@ -96,12 +100,15 @@ export class AuditLogger {
 
   async list(query: AuditQuery) {
     const page = Page.from(query)
+    const from = LogWindow.since(query.period)
 
     // Without a scope only instance-level entries are listed, never another organization's.
     const filters = and(
       this.scope ? this.scope.eq(auditLogs.organizationId) : isNull(auditLogs.organizationId),
       query.entityType ? eq(auditLogs.entityType, query.entityType) : undefined,
       query.entityId ? eq(auditLogs.entityId, query.entityId) : undefined,
+      query.actorType ? eq(auditLogs.actorType, query.actorType) : undefined,
+      from ? gte(auditLogs.createdAt, from) : undefined,
       query.q
         ? or(
             ilike(auditLogs.summary, containsPattern(query.q)),

@@ -11,6 +11,34 @@ export type InboundStatus = 'processed' | 'ignored' | 'failed'
 
 export type ActorType = 'user' | 'api_key' | 'system'
 
+export type EmailOutcome = 'delivered' | 'in_flight' | 'issues' | 'skipped'
+
+export interface LogVolumePoint {
+  at: string
+  ok: number
+  issues: number
+  other: number
+}
+
+export interface LogStats<F extends string> {
+  total: number
+  facets: Record<F, number>
+  volume: LogVolumePoint[]
+  bucket: 'hour' | 'day'
+  window: LogPeriod
+  lastAt: string | null
+}
+
+export type EmailLogStats = LogStats<EmailOutcome>
+
+export interface ApiLogStats extends LogStats<StatusClass> {
+  p95Ms: number | null
+}
+
+export interface InboundEventStats extends LogStats<InboundStatus> {
+  types: { type: string; count: number }[]
+}
+
 // ---------------------------------------------------------------------------
 // Emails
 // ---------------------------------------------------------------------------
@@ -98,6 +126,9 @@ export interface InboundEventItem {
   status: InboundStatus
   error: string | null
   createdAt: string
+  recipient: string | null
+  detail: string | null
+  message: { id: string; subject: string } | null
 }
 
 export interface InboundEventDetail extends InboundEventItem {

@@ -84,6 +84,9 @@ const KPI_HINTS = new Map([
 ])
 
 const canReadLogs = computed(() => can({ log: ['read'] }))
+const canReadAudit = computed(() => can({ audit: ['read'] }))
+
+const insightWidgets = computed(() => (canReadLogs.value ? 2 : 0) + (canReadAudit.value ? 1 : 0))
 
 const kpis = computed(() =>
   (data.value?.kpis ?? []).map((kpi: Kpi): RateStat =>
@@ -215,6 +218,18 @@ defineShortcuts(
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 shrink-0">
           <DashboardActivityChart :series="data.series" :loading="loading" class="lg:col-span-2" />
           <DashboardHealthCard :health="data.health" />
+        </div>
+
+        <div
+          v-if="insightWidgets"
+          class="grid grid-cols-1 gap-4 sm:gap-6 shrink-0"
+          :class="insightWidgets > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'"
+        >
+          <template v-if="canReadLogs">
+            <DashboardPipelineHealth :range="range" />
+            <DashboardDeliveryIssues />
+          </template>
+          <DashboardRecentActivity v-if="canReadAudit" />
         </div>
 
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 shrink-0">

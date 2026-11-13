@@ -2,19 +2,13 @@
 import type { TableColumn, TableRow } from '@nuxt/ui'
 import { z } from 'zod'
 import type { JsonValue } from '#shared/types/domain'
-import type { InboundEventDetail, InboundEventItem } from '#shared/types/logs'
+import type { InboundEventDetail, InboundEventItem, InboundEventStats } from '#shared/types/logs'
 import type { DetailRow } from './DetailList.vue'
+import type { OverviewTile } from './Overview.vue'
 import type { LogTab } from './Panel.vue'
 import { SES_EVENT_TYPES, selectedEntrySchema, snsNotificationSchema } from '#shared/schemas/logs'
 
 const tab = defineModel<LogTab>('tab', { required: true })
-
-const STATUS_ITEMS = [
-  { label: 'All statuses', value: 'all' },
-  { label: 'Processed', value: 'processed' },
-  { label: 'Ignored', value: 'ignored' },
-  { label: 'Failed', value: 'failed' }
-]
 
 const PERIOD_ITEMS = [
   { label: 'Any time', value: 'all' },
@@ -37,9 +31,31 @@ const EVENT_ICONS = new Map([
   ['Subscription', 'i-lucide-user-minus']
 ])
 
+const EVENT_TONE = new Map([
+  ['Delivery', 'text-success'],
+  ['Bounce', 'text-error'],
+  ['Complaint', 'text-error'],
+  ['Reject', 'text-error'],
+  ['Rendering Failure', 'text-error'],
+  ['DeliveryDelay', 'text-warning'],
+  ['Open', 'text-primary'],
+  ['Click', 'text-primary']
+])
+
+const EVENT_LABELS = new Map([
+  ['DeliveryDelay', 'Delivery delay'],
+  ['Rendering Failure', 'Rendering failure']
+])
+
+const eventLabel = (type: string) => EVENT_LABELS.get(type) ?? type
+
 const EVENT_ITEMS = [
   { label: 'All events', value: 'all' },
-  ...SES_EVENT_TYPES.map((value) => ({ label: value, value, icon: EVENT_ICONS.get(value) }))
+  ...SES_EVENT_TYPES.map((value) => ({
+    label: eventLabel(value),
+    value,
+    icon: EVENT_ICONS.get(value)
+  }))
 ]
 
 /** Filter values as the selects hold them (`all` means no filter). */
@@ -60,6 +76,50 @@ const {
 } = usePaginatedList<InboundEventItem, InboundEventFilters>('/api/logs/inbound', {
   filters: { eventType: undefined, status: undefined, period: undefined }
 })
+
+const {
+  stats,
+  loading: statsLoading,
+  refresh: refreshStats
+} = useLogStats<InboundEventStats>('/api/logs/inbound/stats', q, filters, ['status', 'eventType'])
+
+const tiles = computed<OverviewTile[]>(() => {
+  const s = stats.value
+
+  return [
+    { key: 'all', label: 'All events', value: s?.total ?? null, selectable: true },
+    {
+      key: 'processed',
+      label: 'Processed',
+      value: s?.facets.processed ?? null,
+      tone: 'success',
+      selectable: true
+    },
+    {
+      key: 'ignored',
+      label: 'Ignored',
+      value: s?.facets.ignored ?? null,
+      tone: 'neutral',
+      selectable: true
+    },
+    {
+      key: 'failed',
+      label: 'Failed',
+      value: s?.facets.failed ?? null,
+      tone: 'error',
+      selectable: true
+    }
+  ]
+})
+
+function toggleType(type: string) {
+  filters.eventType = filters.eventType === type ? undefined : type
+}
+
+function refreshAll() {
+  void refresh()
+  void refreshStats()
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -99,40 +159,58 @@ const columns: TableColumn<InboundEventItem>[] = [
   {
     id: 'event',
     header: 'Event',
-    meta: { class: { th: 'w-48', td: 'w-48' } },
+    meta: { class: { th: 'w-44', td: 'w-44' } },
     cell: ({ row }) =>
       h('span', { class: 'flex items-center gap-2 min-w-0 text-highlighted font-medium' }, [
         h(UIcon, {
           name: EVENT_ICONS.get(label(row.original)) ?? 'i-lucide-radio-tower',
-          class: 'size-4 shrink-0 text-muted'
+          class: ['size-4 shrink-0', EVENT_TONE.get(label(row.original)) ?? 'text-muted']
         }),
-        h('span', { class: 'truncate' }, label(row.original))
+        h('span', { class: 'truncate' }, eventLabel(label(row.original)))
       ])
   },
   {
-    accessorKey: 'snsMessageId',
-    header: 'SNS message',
+    id: 'recipient',
+    header: 'Recipient',
+    meta: { class: { th: 'w-72', td: 'w-72' } },
     cell: ({ row }) =>
-      h('span', { class: 'block truncate font-mono text-xs text-muted' }, row.original.snsMessageId)
+      row.original.recipient
+        ? h('div', { class: 'min-w-0' }, [
+            h(
+              'p',
+              { class: 'truncate font-mono text-xs text-highlighted' },
+              row.original.recipient
+            ),
+            row.original.message
+              ? h('p', { class: 'truncate text-xs text-muted' }, row.original.message.subject)
+              : null
+          ])
+        : emptyCell()
+  },
+  {
+    id: 'detail',
+    header: 'Detail',
+    meta: { class: { th: 'hidden lg:table-cell', td: 'hidden lg:table-cell' } },
+    cell: ({ row }) => {
+      const text = row.original.error ?? row.original.detail
+
+      if (!text) return emptyCell()
+
+      return h(
+        'span',
+        {
+          class: ['block truncate', row.original.error ? 'text-error' : 'text-muted'],
+          title: text
+        },
+        text
+      )
+    }
   },
   {
     accessorKey: 'status',
     header: 'Status',
-    meta: { class: { th: 'w-32', td: 'w-32' } },
+    meta: { class: { th: 'w-28', td: 'w-28' } },
     cell: ({ row }) => h(StatusBadge, { status: row.original.status })
-  },
-  {
-    accessorKey: 'error',
-    header: 'Error',
-    meta: { class: { th: 'hidden lg:table-cell', td: 'hidden lg:table-cell' } },
-    cell: ({ row }) =>
-      row.original.error
-        ? h(
-            'span',
-            { class: 'block truncate text-error', title: row.original.error },
-            row.original.error
-          )
-        : emptyCell()
   },
   {
     accessorKey: 'createdAt',
@@ -148,7 +226,25 @@ function onSelect(_event: Event, row: TableRow<InboundEventItem>) {
 
 const rowIds = computed(() => items.value.map((i) => i.id))
 
-const meta = computed<DetailRow[]>(() => {
+const summary = computed<DetailRow[]>(() => {
+  const d = detail.value
+
+  if (!d) return []
+
+  return [
+    { label: 'Event', value: eventLabel(d.eventType ?? d.type) },
+    { label: 'Recipient', value: d.recipient, mono: true },
+    {
+      label: 'Email',
+      value: d.message?.subject,
+      to: d.message ? `/logs?tab=emails&id=${d.message.id}` : undefined
+    },
+    { label: 'Detail', value: d.detail },
+    { label: 'Received', value: dateTime(d.createdAt) }
+  ]
+})
+
+const delivery = computed<DetailRow[]>(() => {
   const d = detail.value
 
   if (!d) return []
@@ -156,14 +252,13 @@ const meta = computed<DetailRow[]>(() => {
   return [
     { label: 'SNS message ID', value: d.snsMessageId, copy: true },
     { label: 'Notification', value: d.type },
-    { label: 'Event type', value: d.eventType },
     { label: 'Topic', value: d.topicArn, copy: true },
-    { label: 'Received', value: dateTime(d.createdAt) }
+    { label: 'Event ID', value: d.id, copy: true }
   ]
 })
 
 /** SNS wraps the SES event as a JSON string in `Message`; show it parsed. */
-const sesEvent = computed<JsonValue | null>(() => {
+const wrappedEvent = computed<JsonValue | null>(() => {
   const notification = snsNotificationSchema.safeParse(detail.value?.payload)
 
   if (!notification.success) return null
@@ -174,6 +269,18 @@ const sesEvent = computed<JsonValue | null>(() => {
     return null
   }
 })
+
+const sesEvent = computed<JsonValue | null>(
+  () => wrappedEvent.value ?? detail.value?.payload ?? null
+)
+
+const detailTabs = computed(() => [
+  { label: 'SES event', value: 'event', slot: 'event' as const },
+  ...(wrappedEvent.value
+    ? [{ label: 'Raw notification', value: 'raw', slot: 'raw' as const }]
+    : []),
+  { label: 'Delivery', value: 'delivery', slot: 'delivery' as const }
+])
 
 const search = useTemplateRef<{ inputRef?: HTMLInputElement | null }>('search')
 
@@ -187,7 +294,7 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
         ref="search"
         v-model="q"
         icon="i-lucide-search"
-        placeholder="Search event type or message ID…"
+        placeholder="Search recipient, event or message ID…"
         size="sm"
         class="w-full sm:w-64"
         aria-label="Search events"
@@ -211,14 +318,6 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
         size="sm"
         class="w-44"
         aria-label="Filter by event type"
-      />
-      <USelect
-        v-model="filters.status"
-        :items="STATUS_ITEMS"
-        placeholder="All statuses"
-        size="sm"
-        class="w-36"
-        aria-label="Filter by status"
       />
       <USelect
         v-model="filters.period"
@@ -246,10 +345,37 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
           size="sm"
           aria-label="Refresh events"
           :loading="loading"
-          @click="() => refresh()"
+          @click="refreshAll"
         />
       </UTooltip>
     </template>
+
+    <LogsOverview
+      v-model:selected="filters.status"
+      title="Event volume"
+      :tiles="tiles"
+      :stats="stats"
+      :loading="statsLoading"
+      :series="{ ok: 'Processed', other: 'Ignored', issues: 'Failed' }"
+    >
+      <template v-if="stats?.types.length" #facets>
+        <UButton
+          v-for="t in stats.types"
+          :key="t.type"
+          size="xs"
+          variant="ghost"
+          :icon="EVENT_ICONS.get(t.type) ?? 'i-lucide-radio-tower'"
+          :active="filters.eventType === t.type"
+          active-variant="soft"
+          :aria-pressed="filters.eventType === t.type"
+          :ui="{ leadingIcon: EVENT_TONE.get(t.type) ?? 'text-muted' }"
+          @click="toggleType(t.type)"
+        >
+          {{ eventLabel(t.type) }}
+          <span class="tabular-nums text-muted">{{ t.count }}</span>
+        </UButton>
+      </template>
+    </LogsOverview>
 
     <EmptyState
       v-if="error && !items.length"
@@ -303,11 +429,13 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
     <LogsDetailSlideover
       v-model:id="selectedId"
       :ids="rowIds"
-      :title="detail ? (detail.eventType ?? detail.type) : 'Provider event'"
+      :title="detail ? eventLabel(detail.eventType ?? detail.type) : 'Provider event'"
     >
       <template v-if="detail" #meta>
         <StatusBadge :status="detail.status" />
-        <span class="tabular-nums">{{ dateTime(detail.createdAt) }}</span>
+        <span v-if="detail.recipient" class="font-mono text-xs text-muted truncate">{{
+          detail.recipient
+        }}</span>
       </template>
 
       <div
@@ -344,17 +472,40 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
           title="Processing error"
           :description="detail.error"
         />
-        <LogsDetailList :rows="meta" />
-        <section v-if="sesEvent" class="space-y-2" aria-labelledby="inbound-ses-event">
-          <h3 id="inbound-ses-event" class="text-sm font-semibold text-highlighted">SES event</h3>
-          <JsonBlock :value="sesEvent" label="SES event" />
+        <section class="space-y-2" aria-labelledby="inbound-summary">
+          <div class="flex items-center justify-between gap-2">
+            <h3 id="inbound-summary" class="text-sm font-semibold text-highlighted">Summary</h3>
+            <UButton
+              v-if="detail.message"
+              label="Open email"
+              icon="i-lucide-mail"
+              variant="link"
+              size="xs"
+              :to="`/logs?tab=emails&id=${detail.message.id}`"
+            />
+          </div>
+          <LogsDetailList :rows="summary.filter((row) => row.value)" />
         </section>
-        <section class="space-y-2" aria-labelledby="inbound-raw-notification">
-          <h3 id="inbound-raw-notification" class="text-sm font-semibold text-highlighted">
-            Raw notification
-          </h3>
-          <JsonBlock :value="detail.payload" label="Raw notification" max-height="16rem" />
-        </section>
+        <UTabs
+          :items="detailTabs"
+          default-value="event"
+          variant="link"
+          size="sm"
+          :ui="{ content: 'pt-3' }"
+        >
+          <template #event>
+            <JsonBlock v-if="sesEvent" :value="sesEvent" label="SES event" max-height="24rem" />
+            <p v-else class="text-[13px] text-muted">
+              The notification does not carry an SES event.
+            </p>
+          </template>
+          <template #raw>
+            <JsonBlock :value="detail.payload" label="Raw notification" max-height="24rem" />
+          </template>
+          <template #delivery>
+            <LogsDetailList :rows="delivery" />
+          </template>
+        </UTabs>
       </div>
     </LogsDetailSlideover>
   </LogsPanel>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { TableColumn, TableRow } from '@nuxt/ui'
 import type { MessageKind } from '#shared/types/domain'
-import type { EmailLogDetail, EmailLogItem } from '#shared/types/logs'
+import type { EmailLogDetail, EmailLogItem, EmailLogStats } from '#shared/types/logs'
+import type { OverviewTile } from './Overview.vue'
 import type { LogTab } from './Panel.vue'
 import { selectedEntrySchema } from '#shared/schemas/logs'
 
@@ -43,6 +44,7 @@ const PERIOD_ITEMS = [
 
 /** Filter values as the selects hold them (`all` means no filter). */
 type EmailLogFilters = {
+  outcome?: string
   status?: string
   kind?: string
   period?: string
@@ -62,8 +64,76 @@ const {
   isFiltered,
   clearFilters
 } = usePaginatedList<EmailLogItem, EmailLogFilters>('/api/logs/emails', {
-  filters: { status: undefined, kind: undefined, period: undefined, broadcastId: undefined }
+  filters: {
+    outcome: undefined,
+    status: undefined,
+    kind: undefined,
+    period: undefined,
+    broadcastId: undefined
+  }
 })
+
+const {
+  stats,
+  loading: statsLoading,
+  refresh: refreshStats
+} = useLogStats<EmailLogStats>('/api/logs/emails/stats', q, filters, ['outcome', 'status'])
+
+const outcome = computed<string | undefined>({
+  get: () => filters.outcome,
+  set: (value) => {
+    filters.outcome = value
+    filters.status = undefined
+  }
+})
+
+const tiles = computed<OverviewTile[]>(() => {
+  const facets = stats.value?.facets
+
+  return [
+    { key: 'all', label: 'All emails', value: stats.value?.total ?? null, selectable: true },
+    {
+      key: 'delivered',
+      label: 'Delivered',
+      value: facets?.delivered ?? null,
+      tone: 'success',
+      selectable: true
+    },
+    {
+      key: 'in_flight',
+      label: 'In progress',
+      value: facets?.in_flight ?? null,
+      tone: 'warning',
+      selectable: true
+    },
+    {
+      key: 'issues',
+      label: 'Bounced or failed',
+      value: facets?.issues ?? null,
+      tone: 'error',
+      selectable: true
+    },
+    {
+      key: 'skipped',
+      label: 'Suppressed',
+      value: facets?.skipped ?? null,
+      tone: 'neutral',
+      selectable: true
+    }
+  ]
+})
+
+watch(
+  () => filters.status,
+  (value) => {
+    if (value && value !== 'all') filters.outcome = undefined
+  }
+)
+
+function refreshAll() {
+  void refresh()
+  void refreshStats()
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -99,6 +169,25 @@ const broadcastFilterName = computed(() =>
 )
 
 const UBadge = resolveComponent('UBadge')
+const UIcon = resolveComponent('UIcon')
+
+function engagement(item: EmailLogItem) {
+  if (!item.openCount && !item.clickCount) return emptyCell()
+
+  return h('span', { class: 'flex items-center justify-end gap-3 text-muted tabular-nums' }, [
+    h('span', { class: 'inline-flex items-center gap-1', title: `${item.openCount} opens` }, [
+      h(UIcon, { name: 'i-lucide-eye', class: 'size-3.5', 'aria-hidden': 'true' }),
+      h('span', { class: 'sr-only' }, 'Opens'),
+      String(item.openCount)
+    ]),
+    h('span', { class: 'inline-flex items-center gap-1', title: `${item.clickCount} clicks` }, [
+      h(UIcon, { name: 'i-lucide-mouse-pointer-click', class: 'size-3.5', 'aria-hidden': 'true' }),
+      h('span', { class: 'sr-only' }, 'Clicks'),
+      String(item.clickCount)
+    ])
+  ])
+}
+
 const StatusBadge = resolveComponent('StatusBadge')
 const TimeAgo = resolveComponent('TimeAgo')
 
@@ -135,6 +224,17 @@ const columns: TableColumn<EmailLogItem>[] = [
     header: 'Status',
     meta: { class: { th: 'w-32', td: 'w-32' } },
     cell: ({ row }) => h(StatusBadge, { status: row.original.status })
+  },
+  {
+    id: 'engagement',
+    header: 'Engagement',
+    meta: {
+      class: {
+        th: 'w-32 hidden lg:table-cell text-right',
+        td: 'w-32 hidden lg:table-cell text-right'
+      }
+    },
+    cell: ({ row }) => engagement(row.original)
   },
   {
     id: 'time',
@@ -233,10 +333,19 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
           size="sm"
           aria-label="Refresh emails"
           :loading="loading"
-          @click="() => refresh()"
+          @click="refreshAll"
         />
       </UTooltip>
     </template>
+
+    <LogsOverview
+      v-model:selected="outcome"
+      title="Email volume"
+      :tiles="tiles"
+      :stats="stats"
+      :loading="statsLoading"
+      :series="{ ok: 'Delivered', other: 'Other', issues: 'Bounced or failed' }"
+    />
 
     <EmptyState
       v-if="error && !items.length"
