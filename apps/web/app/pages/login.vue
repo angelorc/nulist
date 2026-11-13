@@ -71,19 +71,19 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <UPageCard class="w-full">
+  <UPageCard class="w-full shadow-lg shadow-black/5" :ui="{ container: 'p-6 sm:p-8' }">
     <UAuthForm
       :schema="schema"
       :fields="fields"
       :providers="providers"
-      description="Sign in with your account. Invited? Open the link in your invitation email."
+      description="Sign in to your workspace. Invited? Open the link in your invitation email."
       :submit="{ label: 'Continue', block: true }"
       :loading="status === 'pending'"
-      :ui="{ description: 'text-sm' }"
+      :ui="{ title: 'text-xl', description: 'text-sm text-balance' }"
       @submit="onSubmit"
     >
       <template #title>
-        <h1>Sign in</h1>
+        <h1>Welcome back</h1>
       </template>
       <template v-if="error" #validation>
         <UAlert
