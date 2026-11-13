@@ -17,7 +17,7 @@ SMTP account. All from one Nuxt app backed by Postgres.
 - 👥 **Contacts, lists & segments**: CSV import/export, custom attributes, dynamic segments, topics and per-contact activity
 - ✉️ **Broadcasts**: audience picker, pre-send checklist, test sends, scheduling, pause/resume/cancel and per-campaign reports
 - ⚡ **Transactional email**: single and batch sends with idempotency keys, Liquid variables, scheduling and delivery events
-- 🎨 **Templates**: drag-and-drop MJML editor (GrapesJS) or raw HTML, with Liquid personalization and plain-text fallback
+- 🎨 **Templates**: drag-and-drop email editor (Templatical) or raw HTML, with Liquid personalization and plain-text fallback
 - ✅ **Consent built in**: double opt-in, hosted subscribe and preference pages, one-click unsubscribe and a suppression list
 - 📬 **Deliverability**: sending-domain verification (SPF, DKIM, DMARC, custom MAIL FROM) and SES bounce/complaint handling via SNS
 - 🔌 **REST API & SDK**: `/api/v1` with API keys, outbound [Standard Webhooks](https://www.standardwebhooks.com/) and a typed [TypeScript SDK](packages/sdk)

@@ -76,8 +76,8 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: [
-        'grapesjs',
-        'grapesjs-mjml',
+        '@templatical/editor',
+        '@templatical/import-mjml',
         'vue-codemirror',
         'codemirror',
         '@codemirror/lang-html',

@@ -145,18 +145,14 @@ defineShortcuts(
       :min-size="12"
       :max-size="20"
       class="bg-elevated/40"
-      :ui="{ footer: 'lg:border-t lg:border-default' }"
+      :ui="{ body: 'gap-3', footer: 'pb-3' }"
     >
       <template #header="{ collapsed }">
         <AppOrganizationSwitcher :collapsed="collapsed" />
       </template>
 
       <template #default="{ collapsed }">
-        <UDashboardSearchButton
-          :collapsed="collapsed"
-          tooltip
-          class="bg-transparent ring-default"
-        />
+        <UDashboardSearchButton :collapsed="collapsed" tooltip variant="ghost" class="text-muted" />
 
         <UNavigationMenu
           :collapsed="collapsed"
@@ -164,7 +160,7 @@ defineShortcuts(
           orientation="vertical"
           tooltip
           popover
-          :ui="{ label: 'text-muted font-medium' }"
+          :ui="{ label: 'mt-3 pb-1 text-dimmed font-medium' }"
         />
 
         <UNavigationMenu

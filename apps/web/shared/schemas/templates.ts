@@ -6,7 +6,37 @@ export const TEMPLATE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export const templateKindSchema = z.enum(['marketing', 'transactional'])
 export const templateEditorSchema = z.enum(['visual', 'code'])
-export const templateStarterSchema = z.enum(['default', 'blank'])
+
+/** Ready-made emails a template can start from; `default` picks the general one of its type. */
+export const templateStarterSchema = z.enum([
+  'default',
+  'blank',
+  'newsletter',
+  'announcement',
+  'promotion',
+  'event',
+  'welcome',
+  'confirm-email',
+  'password-reset',
+  'receipt',
+  'shipping',
+  'notification'
+])
+
+export type TemplateStarter = z.infer<typeof templateStarterSchema>
+
+export const starterListQuerySchema = z.object({ kind: z.enum(['marketing', 'transactional']) })
+
+/** A ready-made email shown in the "New template" gallery. */
+export interface StarterPreviewDto {
+  id: Exclude<TemplateStarter, 'default'>
+  name: string
+  description: string
+  /** Suggested subject, rendered with sample values. */
+  subject: string
+  /** Rendered with sample values; `null` for the blank canvas. */
+  previewHtml: string | null
+}
 
 export const templateSlugSchema = z
   .string()
@@ -16,7 +46,7 @@ export const templateSlugSchema = z
   .max(64, 'Use at most 64 characters')
   .regex(TEMPLATE_SLUG_PATTERN, 'Use lowercase letters, numbers and dashes, e.g. password-reset')
 
-const MAX_MJML = 1_000_000
+export const MAX_MJML = 1_000_000
 
 export const templateCreateSchema = z
   .object({
@@ -41,8 +71,15 @@ export type TemplateCreateInput = z.infer<typeof templateCreateSchema>
 
 export type TemplateCreateFormState = z.input<typeof templateCreateSchema>
 
-/** GrapesJS project data (opaque JSON object). */
-export const templateDesignSchema = z.record(z.string(), z.json())
+/**
+ * The visual editor's document (see `TemplateDesignEnvelope`); templates saved
+ * before it hold GrapesJS project data, which is rebuilt from their MJML.
+ */
+export const templateDesignSchema = z
+  .record(z.string(), z.json())
+  .refine((design) => JSON.stringify(design).length <= MAX_MJML * 2, {
+    message: 'This email is too long. Remove some blocks and save again.'
+  })
 
 export type TemplateDesign = z.infer<typeof templateDesignSchema>
 
@@ -129,24 +166,12 @@ export interface TemplateSummaryDto {
 export interface TemplateDto extends Omit<TemplateSummaryDto, 'previewHtml'> {
   mjml: string
   html: string | null
-  /** GrapesJS project data of the visual editor. */
+  /** The visual editor's document (older templates may hold GrapesJS data, rebuilt on open). */
   design: TemplateDesign | null
 }
 
 export interface TemplateSaveResult extends TemplateDto {
   warnings: TemplateIssue[]
-}
-
-/** What the visual editor hands back on save. */
-export interface VisualEditorContent {
-  mjml: string
-  design: TemplateDesign
-}
-
-/** Handle the visual editor hands to its page once GrapesJS has loaded. */
-export interface VisualEditorApi {
-  getContent: () => VisualEditorContent | null
-  insertImage: (url: string, alt?: string) => void
 }
 
 export interface TemplateTestResult {

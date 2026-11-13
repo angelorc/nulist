@@ -59,7 +59,19 @@ export class TemplateApi {
   }
 
   async create(input: V1TemplateCreateInput, actor: Actor): Promise<V1TemplateSaveResult> {
-    return TemplateApi.saved(await this.templates.create({ ...input, starter: 'default' }, actor))
+    // The default layout, without the starter's suggested subject and preheader: an API
+    // client that leaves them out gets them empty, as it always did.
+    return TemplateApi.saved(
+      await this.templates.create(
+        {
+          ...input,
+          subject: input.subject ?? '',
+          preheader: input.preheader ?? null,
+          starter: 'default'
+        },
+        actor
+      )
+    )
   }
 
   async update(

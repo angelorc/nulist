@@ -95,6 +95,7 @@ Negative letter-spacing only at 20px and above.
   - **Messaging** — Broadcasts, Transactional, Templates, Files
   - **Insights** — Logs, Audit log
   - Bottom: Webhooks, Settings, user menu (theme, sign out)
+  - No divider above the user menu.
 - `⌘K` (`UDashboardSearch`): navigation + actions ("New broadcast", "Import contacts",
   "Add contact") + contact search by email.
 
@@ -299,7 +300,7 @@ look below. Semantic colors and tokens only (`text-muted`, `bg-elevated`, `borde
   typed value · ×, "+ Condition". Live debounced count "≈ 4,213 contacts" + preview.
 - **Email log detail**: vertical event timeline (Queued → Sent → Delivered → Opened → Clicked)
   with timestamps, Preview / HTML / Details tabs, copyable mono IDs.
-- **Template editor**: full-screen. Visual (GrapesJS + MJML) or Code (MJML + live preview)
+- **Template editor**: full-screen. Visual (Templatical blocks) or Code (MJML + live preview)
   modes. Variables documented in a side panel (`{{ contact.first_name }}`, `{{ unsubscribe_url }}`).
 
 ## 8. Accessibility

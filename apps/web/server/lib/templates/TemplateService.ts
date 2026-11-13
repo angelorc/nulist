@@ -3,9 +3,11 @@ import type { SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Database } from '../../db/client'
 import { broadcasts, templates } from '../../db/schema'
-import { MjmlFormatter } from '../../../shared/schemas/templates'
+import { MAX_MJML, MjmlFormatter } from '../../../shared/schemas/templates'
+import { TemplateDesignEnvelope } from '../../../shared/schemas/template-design'
 import type {
   TemplateCreateInput,
+  TemplateDesign,
   TemplateIssue,
   TemplateListQuery,
   TemplateUpdateInput
@@ -17,7 +19,8 @@ import type { AuditFieldChange } from '../audit/AuditLogger'
 import type { LimitService } from '../limits/LimitService'
 import { TemplateIssues } from './TemplateIssues'
 import type { TemplateRenderer } from './TemplateRenderer'
-import { TemplateStarters } from './starters'
+import type { TemplateDesignRenderer } from './TemplateDesignRenderer'
+import type { StarterCatalog } from './starters/StarterCatalog'
 import { containsPattern, escapeLike } from '../core/sql'
 import type { TenantScope } from '../core/TenantScope'
 
@@ -101,11 +104,19 @@ function isUniqueViolation(cause: unknown): boolean {
   return parsed.success && (parsed.data.code === '23505' || parsed.data.cause?.code === '23505')
 }
 
+/** The stored content of a template: MJML plus, for the visual editor, its design. */
+interface TemplateSource {
+  mjml: string
+  design: TemplateRow['design']
+}
+
 /**
- * Email templates (MJML + Liquid) of one organization. MJML is the source of
- * truth; the compiled HTML is cached in `html` and `design` keeps the visual
- * editor project data. Slugs are unique per organization, and a template of
- * another organization behaves exactly like a missing one (404).
+ * Email templates (MJML + Liquid) of one organization. MJML is what is
+ * compiled and sent; the compiled HTML is cached in `html`. A visual template
+ * also keeps its editor document in `design`, and its MJML is always rendered
+ * from that document here, so the two never disagree. Slugs are unique per
+ * organization, and a template of another organization behaves exactly like a
+ * missing one (404).
  */
 export class TemplateService {
   private readonly formatter = new MjmlFormatter()
@@ -115,7 +126,9 @@ export class TemplateService {
     protected readonly db: Database,
     protected readonly renderer: TemplateRenderer,
     protected readonly audit: AuditLogger,
-    protected readonly limits: LimitService
+    protected readonly limits: LimitService,
+    protected readonly designs: TemplateDesignRenderer,
+    protected readonly starters: StarterCatalog
   ) {}
 
   // Queries ------------------------------------------------------------------
@@ -227,17 +240,23 @@ export class TemplateService {
     const slug = this.slugFor(input.kind, input.slug)
 
     if (slug) await this.assertSlugAvailable(slug)
-    const subject = input.subject ?? ''
+
+    // A starter brings a suggested subject and preheader; the creator's own win.
+    const starter =
+      input.mjml === undefined ? this.starters.resolve(input.starter, input.kind) : null
+
+    const subject = input.subject ?? starter?.subject ?? ''
+    const preheader = input.preheader === undefined ? starter?.preheader : input.preheader
+
     this.renderer.assertLiquid(subject, 'subject')
 
-    if (input.preheader) this.renderer.assertLiquid(input.preheader, 'preheader')
+    if (preheader) this.renderer.assertLiquid(preheader, 'preheader')
 
-    const mjml =
-      input.mjml === undefined
-        ? TemplateStarters.mjml(input.starter, input.kind)
-        : this.source(input.mjml, input.editor)
+    const source = starter
+      ? await this.fromDesign(TemplateDesignEnvelope.wrap(starter.build(input.kind)), input.editor)
+      : { mjml: this.source(input.mjml ?? '', input.editor), design: null }
 
-    const { html, warnings } = await this.compile(mjml)
+    const { html, warnings } = await this.compile(source.mjml)
 
     const row = await this.insert({
       name: input.name,
@@ -245,8 +264,9 @@ export class TemplateService {
       kind: input.kind,
       editor: input.editor,
       subject,
-      preheader: input.preheader || null,
-      mjml,
+      preheader: preheader || null,
+      mjml: source.mjml,
+      design: source.design,
       html
     })
 
@@ -282,7 +302,14 @@ export class TemplateService {
 
     let warnings: TemplateIssue[] = []
 
-    const mjml = input.mjml === undefined ? undefined : this.source(input.mjml, editor)
+    // A visual-editor design is the source: its MJML is rendered here, never taken from the client.
+    const designed =
+      input.design && TemplateDesignEnvelope.isTemplatical(input.design)
+        ? await this.fromDesign(input.design, 'visual')
+        : null
+
+    const mjml =
+      designed?.mjml ?? (input.mjml === undefined ? undefined : this.source(input.mjml, editor))
 
     const contentChanged = mjml !== undefined && mjml !== before.mjml
 
@@ -291,7 +318,7 @@ export class TemplateService {
       patch.mjml = mjml
       patch.html = compiled.html
       warnings = compiled.warnings
-      // Project data describes a specific MJML document: drop it when MJML changes without it.
+      // A design describes a specific MJML document: drop it when MJML changes without it.
       patch.design =
         input.design === undefined ? (contentChanged ? null : before.design) : input.design
     } else if (input.design !== undefined) {
@@ -379,6 +406,30 @@ export class TemplateService {
   /** The visual editor exports single-line MJML: keep the stored source readable. */
   private source(mjml: string, editor: TemplateRow['editor']): string {
     return editor === 'visual' ? this.formatter.format(mjml) : mjml
+  }
+
+  /**
+   * MJML rendered from a visual-editor design. A code template keeps only the
+   * (readable) MJML: the design would go stale with the first hand edit.
+   */
+  private async fromDesign(
+    design: TemplateDesign,
+    editor: TemplateRow['editor']
+  ): Promise<TemplateSource> {
+    const content = TemplateDesignEnvelope.read(design)
+
+    if (!content) throw new ValidationError('The email design is not valid', { field: 'design' })
+
+    const rendered = await this.designs.mjml(content)
+
+    // Checked before formatting and compiling, which both grow with the size of the email.
+    if (rendered.length > MAX_MJML) {
+      throw new ValidationError('This email is too long. Remove some blocks and save again.', {
+        field: 'design'
+      })
+    }
+
+    return { mjml: this.formatter.format(rendered), design: editor === 'visual' ? design : null }
   }
 
   /** Transactional templates require a slug; marketing templates never carry one. */

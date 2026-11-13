@@ -2,8 +2,8 @@
 import type { TemplatePreviewResult } from '#shared/schemas/templates'
 
 /**
- * Rendered template with sample data, for members who may read but not edit it
- * (GrapesJS has no read-only mode, so viewers get this instead of the visual editor).
+ * Rendered template with sample data, for members who may read but not edit it:
+ * they get this instead of the visual editor.
  */
 const props = defineProps<{
   mjml: string
