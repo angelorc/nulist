@@ -2,11 +2,15 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
-import { Pool } from 'pg'
+import { Client } from 'pg'
 
 const MIGRATIONS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../server/db/migrations')
 
+type MigrationStep = () => Promise<void>
+
 class AppMigrator {
+  private static readonly LOCK_KEY = 7_204_311_982
+
   constructor(
     private readonly connectionString: string,
     private readonly migrationsFolder: string
@@ -20,22 +24,26 @@ class AppMigrator {
     return new AppMigrator(url, MIGRATIONS_DIR)
   }
 
-  async run(): Promise<void> {
-    const pool = new Pool({ connectionString: this.connectionString, max: 1 })
+  async run(next: MigrationStep): Promise<void> {
+    const client = new Client({ connectionString: this.connectionString })
+    await client.connect()
 
     try {
-      await migrate(drizzle(pool), { migrationsFolder: this.migrationsFolder })
+      await client.query('SELECT pg_advisory_lock($1)', [AppMigrator.LOCK_KEY])
+      await migrate(drizzle(client), { migrationsFolder: this.migrationsFolder })
+      await next()
     } finally {
-      await pool.end()
+      await client.end()
     }
   }
 }
 
 try {
   console.log('Applying app migrations…')
-  await AppMigrator.fromEnvironment().run()
-  const { setupDatabase } = await import('@workflow/world-postgres/cli')
-  await setupDatabase()
+  await AppMigrator.fromEnvironment().run(async () => {
+    const { setupDatabase } = await import('@workflow/world-postgres/cli')
+    await setupDatabase()
+  })
 } catch (error) {
   console.error(error instanceof Error ? error.message : error)
   process.exit(1)
