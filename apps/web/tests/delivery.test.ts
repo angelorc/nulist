@@ -180,9 +180,14 @@ describe('SES events', () => {
 
     const notifications = [
       sesNotification(org, sent, 'Delivery', { delivery: { recipients: [email] } }),
-      sesNotification(org, sent, 'Open', { open: { userAgent: browser } }),
+      sesNotification(org, sent, 'Open', { open: { userAgent: browser, isBotEvent: 'Unlikely' } }),
       sesNotification(org, sent, 'Click', {
-        click: { link: 'https://example.test/offer', userAgent: browser }
+        click: {
+          link: 'https://example.test/offer',
+          linkTags: null,
+          userAgent: browser,
+          isBotEvent: 'Unlikely'
+        }
       })
     ]
 

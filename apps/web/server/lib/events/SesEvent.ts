@@ -69,11 +69,28 @@ export const sesDeliverySchema = z.looseObject({
 
 export const sesRejectSchema = z.looseObject({ reason: z.string().optional() })
 
+const BOT_VERDICTS = ['likely', 'true']
+const HUMAN_VERDICTS = ['unlikely', 'false']
+
+/** SES reports `Likely` / `Unlikely` (or a boolean); anything inconclusive is left to the user-agent heuristic. */
+const sesBotVerdictSchema = z
+  .union([
+    z.boolean(),
+    z
+      .string()
+      .trim()
+      .toLowerCase()
+      .pipe(z.enum([...BOT_VERDICTS, ...HUMAN_VERDICTS]))
+      .transform((verdict) => BOT_VERDICTS.includes(verdict))
+  ])
+  .optional()
+  .catch(undefined)
+
 export const sesOpenSchema = z.looseObject({
   timestamp: z.string().optional(),
   ipAddress: z.string().optional(),
   userAgent: z.string().optional(),
-  isBotEvent: z.boolean().optional()
+  isBotEvent: sesBotVerdictSchema
 })
 
 export const sesClickSchema = z.looseObject({
@@ -81,8 +98,8 @@ export const sesClickSchema = z.looseObject({
   ipAddress: z.string().optional(),
   userAgent: z.string().optional(),
   link: z.string(),
-  linkTags: tagsSchema.optional(),
-  isBotEvent: z.boolean().optional()
+  linkTags: tagsSchema.nullish(),
+  isBotEvent: sesBotVerdictSchema
 })
 
 export const sesRenderingFailureSchema = z.looseObject({
