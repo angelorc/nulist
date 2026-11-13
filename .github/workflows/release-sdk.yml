@@ -1,7 +1,6 @@
 name: Release SDK
 
 # Stages @nulist/sdk on every `v*` release tag; app and SDK share one version.
-# The Release workflow dispatches this on the tag it creates after a version PR merges.
 # Auth is npm trusted publishing (OIDC), no token. The staged version goes live only after a
 # maintainer approves it with 2FA: npmjs.com > Staged Packages, or `npm stage approve <id>`.
 # To (re)stage an existing tag: gh workflow run release-sdk.yml --ref vX.Y.Z
