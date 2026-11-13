@@ -1,5 +1,11 @@
 # @nulist/web
 
+## 0.2.1
+
+### Patch Changes
+
+- [#14](https://github.com/angelorc/nulist/pull/14) [`08eab93`](https://github.com/angelorc/nulist/commit/08eab9383549707c7b4ce767ac1be2a06ed74a29) Thanks [@angelorc](https://github.com/angelorc)! - Sign-in page shows the nulist logo, with a refreshed layout and a full-color Google button. The favicon.ico is regenerated from the brand mark.
+
 ## 0.2.0
 
 ### Minor Changes
