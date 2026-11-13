@@ -21,7 +21,8 @@
     "db:demo": "tsx scripts/db.ts demo",
     "test": "vitest run",
     "auth:generate": "auth generate --config scripts/auth-cli.ts --output server/db/auth-schema.ts --yes",
-    "db:setup": "drizzle-kit migrate && pnpm workflow:bootstrap"
+    "db:setup": "tsx --env-file-if-exists=.env scripts/migrate.ts",
+    "build:migrate": "esbuild scripts/migrate.ts --bundle --platform=node --format=esm --target=node24 --minify --external:typescript --external:pg-native --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\" --splitting --out-extension:.js=.mjs --outdir=dist/migrate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1164.0",
@@ -78,6 +79,7 @@
     "@types/pg": "^8.15.0",
     "auth": "1.7.18",
     "drizzle-kit": "^0.31.11",
+    "esbuild": "0.28.2",
     "tsx": "^4.20.0",
     "typescript": "^6.0.3",
     "vitest": "^5.1.0",

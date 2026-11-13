@@ -36,8 +36,11 @@ services:
 
   # Applies Drizzle migrations and bootstraps the workflow tables, then exits
   migrate:
-    image: ghcr.io/angelorc/nulist-migrate:${NULIST_VERSION:?set NULIST_VERSION}
+    image: ghcr.io/angelorc/nulist:${NULIST_VERSION:?set NULIST_VERSION}
+    command: ['scripts/migrate.mjs']
     restart: 'no'
+    healthcheck:
+      disable: true
     environment: *app-env
     depends_on:
       postgres:
