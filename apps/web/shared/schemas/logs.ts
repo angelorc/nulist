@@ -27,6 +27,19 @@ export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
 
 export const STATUS_CLASSES = ['2xx', '3xx', '4xx', '5xx'] as const
 
+export const SES_EVENT_TYPES = [
+  'Send',
+  'Delivery',
+  'DeliveryDelay',
+  'Bounce',
+  'Complaint',
+  'Reject',
+  'Open',
+  'Click',
+  'Rendering Failure',
+  'Subscription'
+] as const
+
 export const emailLogQuerySchema = paginationSchema.extend({
   status: z.enum(MESSAGE_STATUSES).optional(),
   kind: z.enum(['broadcast', 'transactional', 'system']).optional(),
@@ -50,6 +63,7 @@ export type ApiLogQuery = z.infer<typeof apiLogQuerySchema>
 
 export const inboundEventQuerySchema = paginationSchema.extend({
   status: z.enum(['processed', 'ignored', 'failed']).optional(),
+  eventType: z.enum(SES_EVENT_TYPES).optional(),
   period: z.enum(LOG_PERIODS).optional()
 })
 

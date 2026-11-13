@@ -10,6 +10,7 @@ import type { DeliveryResult } from '../server/lib/transactional/TransactionalSe
 import { WebhookService } from '../server/lib/webhooks/WebhookService'
 import { API_KEY_SCOPES } from '../shared/auth/permissions'
 import { broadcastCreateSchema } from '../shared/schemas/broadcasts'
+import { inboundEventQuerySchema } from '../shared/schemas/logs'
 import { transactionalEmailSchema } from '../shared/schemas/transactional'
 import type { TransactionalEmailInput } from '../shared/schemas/transactional'
 import type { ContactStatus, JsonObject, SuppressionReason } from '../shared/types/domain'
@@ -222,6 +223,13 @@ describe('SES events', () => {
       'click',
       'open'
     ])
+
+    const opens = await org.services.logs.inboundEvents(
+      inboundEventQuerySchema.parse({ eventType: 'Open' })
+    )
+
+    expect(opens.total).toBe(2)
+    expect(opens.items.map((event) => event.eventType)).toEqual(['Open', 'Open'])
   })
 })
 
