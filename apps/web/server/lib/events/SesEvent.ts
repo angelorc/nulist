@@ -69,11 +69,13 @@ export const sesDeliverySchema = z.looseObject({
 
 export const sesRejectSchema = z.looseObject({ reason: z.string().optional() })
 
+const sesBotVerdictSchema = z.union([z.boolean(), z.string()]).nullish()
+
 export const sesOpenSchema = z.looseObject({
   timestamp: z.string().optional(),
   ipAddress: z.string().optional(),
   userAgent: z.string().optional(),
-  isBotEvent: z.boolean().optional()
+  isBotEvent: sesBotVerdictSchema
 })
 
 export const sesClickSchema = z.looseObject({
@@ -81,8 +83,8 @@ export const sesClickSchema = z.looseObject({
   ipAddress: z.string().optional(),
   userAgent: z.string().optional(),
   link: z.string(),
-  linkTags: tagsSchema.optional(),
-  isBotEvent: z.boolean().optional()
+  linkTags: tagsSchema.nullish(),
+  isBotEvent: sesBotVerdictSchema
 })
 
 export const sesRenderingFailureSchema = z.looseObject({
