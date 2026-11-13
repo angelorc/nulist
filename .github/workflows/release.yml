@@ -1,0 +1,53 @@
+name: Release
+
+# On every push to main:
+# - pending changesets → open or update the "version packages" PR
+# - no pending changesets and the version has no tag yet → tag vX.Y.Z and start the release workflows
+# Tags pushed with GITHUB_TOKEN don't trigger `on: push`, so Docker and Release SDK are dispatched explicitly.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Version or tag
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: changesets
+        uses: changesets/action@v2
+        with:
+          version-script: pnpm version-packages
+          commit-message: 'chore(release): version packages'
+          pr-title: 'chore(release): version packages'
+      - name: Tag release and dispatch release workflows
+        if: steps.changesets.outputs.has-changesets == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          tag="v$(node -p "require('./apps/web/package.json').version")"
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" > /dev/null; then
+            echo "${tag} already exists, nothing to release"
+            exit 0
+          fi
+          gh api "repos/${REPO}/git/refs" -f ref="refs/tags/${tag}" -f sha="${GITHUB_SHA}"
+          gh workflow run docker.yml --repo "${REPO}" --ref "${tag}"
+          gh workflow run release-sdk.yml --repo "${REPO}" --ref "${tag}"
