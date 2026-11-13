@@ -40,6 +40,22 @@ const selectsDoubleOptIn = computed(() =>
   lists.value.some((l) => l.optIn === 'double' && state.listIds.includes(l.id))
 )
 
+const listsHelp = computed(() =>
+  selectsDoubleOptIn.value
+    ? 'Double opt-in lists send a confirmation email first.'
+    : 'Optional. The contact is subscribed right away.'
+)
+
+const listMenuOpen = ref(false)
+const listMenuContent = { disableOutsidePointerEvents: true }
+
+watch(
+  () => state.listIds.length,
+  () => {
+    listMenuOpen.value = false
+  }
+)
+
 const { run, pending } = useApiAction(
   (body: ContactCreateData) => $fetch<{ id: string }>('/api/contacts', { method: 'POST', body }),
   { success: 'Contact added' }
@@ -88,16 +104,14 @@ async function onSubmit(event: FormSubmitEvent<ContactCreateData>) {
             <UInput v-model="state.lastName" placeholder="Doe" class="w-full" />
           </UFormField>
         </div>
-        <UFormField
-          label="Lists"
-          name="listIds"
-          help="Optional. The contact is subscribed right away."
-        >
+        <UFormField label="Lists" name="listIds" :help="listsHelp">
           <USelectMenu
             v-model="state.listIds"
             :items="listItems"
             value-key="value"
+            v-model:open="listMenuOpen"
             multiple
+            :content="listMenuContent"
             :loading="listsStatus === 'pending'"
             placeholder="No lists"
             icon="i-lucide-list"
