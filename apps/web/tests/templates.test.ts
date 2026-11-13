@@ -1,5 +1,6 @@
 import {
   createButtonBlock,
+  createImageBlock,
   createParagraphBlock,
   createSectionBlock,
   createTableBlock
@@ -288,6 +289,25 @@ describe('visual templates', () => {
       expect(saved.html).toContain('https://fonts.googleapis.com/css2?family=Geist')
       expect(saved.html).toMatch(/font-family:\s*["']?Geist["']?, Arial, Helvetica, sans-serif/)
     }
+  })
+
+  it('save a decorative image without MJML issues', async () => {
+    const template = await visualTemplate('Decorative image', 'marketing', 'blank')
+
+    const saved = await org.services.templates.update(
+      template.id,
+      {
+        design: TemplateDesignEnvelope.wrap(
+          designOf([
+            createImageBlock({ src: 'https://example.com/logo.png', alt: 'Logo', decorative: true })
+          ])
+        )
+      },
+      org.actor
+    )
+
+    expect(saved.warnings).toEqual([])
+    expect(saved.html).toContain('<img alt src="https://example.com/logo.png"')
   })
 
   it('tag the links people click with UTM, but not the web font stylesheet', async () => {
