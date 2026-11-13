@@ -212,7 +212,7 @@ const summary = computed(() => {
       v-else-if="!invitations.length && invitationsStatus !== 'pending'"
       icon="i-lucide-mail"
       title="No pending invitations"
-      description="Invite people by email; they choose their own password."
+      description="Invite people by email; they sign in with their Google account."
       appearance="outline"
       compact
     >

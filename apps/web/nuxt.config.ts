@@ -51,6 +51,7 @@ export default defineNuxtConfig({
     '/invitations/**': { auth: false },
     // Instance administration (organizations, limits)
     '/admin/**': { auth: { only: 'user', user: { role: 'admin' } } },
+    '/settings/access': { auth: { only: 'user', user: { role: 'admin' } } },
     '/api/admin/**': { auth: { only: 'user', user: { role: 'admin' } } },
     '/settings/team': { redirect: '/settings/members' },
     // Invitation details are public; the other invitation endpoints check the session themselves

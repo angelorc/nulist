@@ -5,5 +5,5 @@ import { user } from '../db/schema'
 export default definePublicHandler(async (_event, { platform }) => {
   const [row] = await platform.db.select({ value: count() }).from(user)
 
-  return { needsSetup: (row?.value ?? 0) === 0 }
+  return { needsSetup: (row?.value ?? 0) === 0, googleEnabled: googleOAuthCredentials() !== null }
 })

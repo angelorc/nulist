@@ -24,6 +24,13 @@ import type {
   SettingsSection,
   UtmSettings
 } from '../../shared/types/domain'
+import type { AccessSettings } from '../../shared/schemas/access'
+
+export interface InstanceSettingsMap {
+  access: AccessSettings
+}
+
+export type InstanceSettingsKey = keyof InstanceSettingsMap
 
 export * from './auth-schema'
 
@@ -148,6 +155,12 @@ export const settings = pgTable(
   },
   (t) => [primaryKey({ name: 'settings_pkey', columns: [t.organizationId, t.key] })]
 )
+
+export const instanceSettings = pgTable('instance_settings', {
+  key: text('key').$type<InstanceSettingsKey>().primaryKey(),
+  value: jsonb('value').$type<InstanceSettingsMap[InstanceSettingsKey]>().notNull(),
+  updatedAt: updatedAt()
+})
 
 // ---------------------------------------------------------------------------
 // Audience

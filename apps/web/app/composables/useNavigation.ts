@@ -142,6 +142,12 @@ const SETTINGS: NavEntry[] = [
     permission: { settings: ['read'] }
   },
   {
+    label: 'Access',
+    icon: 'i-lucide-shield-check',
+    to: '/settings/access',
+    instanceAdmin: true
+  },
+  {
     label: 'Topics',
     icon: 'i-lucide-tags',
     to: '/settings/topics',

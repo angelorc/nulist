@@ -3,15 +3,16 @@ import { defineServerAuth } from '@nuxtjs/better-auth/config'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError } from 'better-auth/api'
 import { admin, organization } from 'better-auth/plugins'
-import { count } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { ac, roleLabel, roles } from '../shared/auth/permissions'
-import { INVITATION_HEADER } from '../shared/schemas/members'
+import { SIGN_IN_ERROR_CODES } from '../shared/schemas/access'
 import * as authSchema from './db/auth-schema'
 import { CLIENT_IP_HEADER } from './lib/security/ClientAddress'
 import { SYSTEM_ACTOR } from './lib/core/actor'
 import type { Actor } from './lib/core/actor'
 import { requestActor } from './utils/api'
+import { googleOAuthCredentials } from './utils/google-oauth'
 import { useServices } from './utils/services'
 
 /** Invitations stay valid for a week. */
@@ -49,6 +50,10 @@ async function hookActor(fallback?: { id: string; email: string }): Promise<Acto
   return event ? requestActor(event, base) : { ...base, organizationId: null }
 }
 
+function refuse(code: string, message: string): APIError {
+  return APIError.from('FORBIDDEN', { code, message })
+}
+
 /** Logs hook failures: the Better Auth operation already succeeded. */
 async function bestEffort(what: string, run: () => Promise<void>): Promise<void> {
   try {
@@ -59,7 +64,7 @@ async function bestEffort(what: string, run: () => Promise<void>): Promise<void>
 }
 
 /**
- * Better Auth (via @nuxtjs/better-auth): email/password sessions, instance
+ * Better Auth (via @nuxtjs/better-auth): Google sign-in sessions, instance
  * roles (admin plugin), organizations with our roles and access control, and
  * organization-owned API keys for the public REST API. Keep plugins in sync
  * with app/auth.config.ts and scripts/auth-cli.ts (schema generation).
@@ -67,6 +72,15 @@ async function bestEffort(what: string, run: () => Promise<void>): Promise<void>
 export default defineServerAuth(() => {
   const services = useServices()
   const { db } = services
+  const google = googleOAuthCredentials()
+
+  async function assertDomainAllowed(email: string): Promise<void> {
+    if (!(await services.access.allows(email)))
+      throw refuse(
+        SIGN_IN_ERROR_CODES.domainNotAllowed,
+        'Your email domain is not allowed to sign in to this instance.'
+      )
+  }
 
   return {
     database: drizzleAdapter(db, { provider: 'pg', schema: authSchema }),
@@ -75,7 +89,21 @@ export default defineServerAuth(() => {
       // Set by server/middleware/client-address.ts: X-Forwarded-For only counts from trusted proxies.
       ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] }
     },
-    emailAndPassword: { enabled: true, minPasswordLength: 10 },
+    emailAndPassword: { enabled: import.meta.dev, minPasswordLength: 10 },
+    socialProviders: {
+      google: {
+        enabled: google !== null,
+        clientId: google?.clientId ?? '',
+        clientSecret: google?.clientSecret ?? '',
+        prompt: 'select_account'
+      }
+    },
+    account: {
+      accountLinking: {
+        enabled: true,
+        requireLocalEmailVerified: false
+      }
+    },
     session: { cookieCache: { enabled: true, maxAge: 5 * 60 } },
     plugins: [
       admin({ defaultRole: 'user', adminRoles: ['admin'] }),
@@ -106,6 +134,9 @@ export default defineServerAuth(() => {
           })
         },
         organizationHooks: {
+          beforeCreateInvitation: async ({ invitation }) => {
+            await assertDomainAllowed(invitation.email)
+          },
           afterCreateOrganization: async ({ organization: created, user }) => {
             await bestEffort('organization setup', async () => {
               await services.organizations.initialize(created.id, created.name)
@@ -221,21 +252,28 @@ export default defineServerAuth(() => {
     databaseHooks: {
       user: {
         create: {
-          // The first account becomes the instance admin. Afterwards sign-up is
-          // invitation only: the request must carry the id of a pending invitation
-          // for that email (from the emailed link, which proves the mailbox, so the
-          // address counts as verified). Instance admins can still create users directly.
           before: async (user, ctx) => {
+            await assertDomainAllowed(user.email)
+
             const [row] = await db.select({ value: count() }).from(authSchema.user)
             const isFirst = (row?.value ?? 0) === 0
             const role = isFirst ? 'admin' : (instanceRole(user) ?? 'user')
 
-            if (isFirst || ctx?.path !== '/sign-up/email') return { data: { ...user, role } }
+            if (isFirst || ctx?.path === '/admin/create-user') return { data: { ...user, role } }
 
-            const invitationId = new Headers(ctx.headers).get(INVITATION_HEADER) ?? ''
+            const devPasswordSignUp = import.meta.dev && ctx?.path === '/sign-up/email'
 
-            if (!(await services.organizations.hasPendingInvitation(invitationId, user.email)))
-              throw new APIError('FORBIDDEN', { message: 'Sign-up is invitation only.' })
+            if (!user.emailVerified && !devPasswordSignUp)
+              throw refuse(
+                SIGN_IN_ERROR_CODES.emailNotVerified,
+                'Your Google account email is not verified.'
+              )
+
+            if (!(await services.organizations.hasPendingInvitationFor(user.email)))
+              throw refuse(
+                SIGN_IN_ERROR_CODES.invitationRequired,
+                'This instance is invitation only. Sign in with the invited Google account.'
+              )
 
             return { data: { ...user, role, emailVerified: true } }
           },
@@ -251,8 +289,14 @@ export default defineServerAuth(() => {
       },
       session: {
         create: {
-          // New sessions start in the user's first organization.
           before: async (session) => {
+            const [owner] = await db
+              .select({ email: authSchema.user.email })
+              .from(authSchema.user)
+              .where(eq(authSchema.user.id, session.userId))
+
+            if (owner) await assertDomainAllowed(owner.email)
+
             const [first] = await services.organizations.listForUser(session.userId)
 
             return { data: { ...session, activeOrganizationId: first?.id ?? null } }

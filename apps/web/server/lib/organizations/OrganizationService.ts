@@ -166,20 +166,12 @@ export class OrganizationService {
     return row !== undefined
   }
 
-  /**
-   * Whether `invitationId` (from the emailed link) is a pending, unexpired invitation
-   * addressed to `email` (invitation-only sign-up). Knowing the address is not enough:
-   * the random id proves the invitee received the email.
-   */
-  async hasPendingInvitation(invitationId: string, email: string): Promise<boolean> {
-    if (!uuidSchema.safeParse(invitationId).success) return false
-
+  async hasPendingInvitationFor(email: string): Promise<boolean> {
     const [row] = await this.db
       .select({ value: count() })
       .from(invitation)
       .where(
         and(
-          eq(invitation.id, invitationId),
           sql`lower(${invitation.email}) = ${email.trim().toLowerCase()}`,
           eq(invitation.status, 'pending'),
           gt(invitation.expiresAt, new Date())

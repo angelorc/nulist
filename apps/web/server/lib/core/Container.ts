@@ -1,4 +1,5 @@
 import type { Database, DatabaseHandle } from '../../db/client'
+import { AccessPolicy } from '../access/AccessPolicy'
 import { createDatabase } from '../../db/client'
 import { ApiLogRecorder } from '../api/ApiLogService'
 import { AuditLogger } from '../audit/AuditLogger'
@@ -109,6 +110,7 @@ export class Container {
   private auditInstance?: AuditLogger
   private apiLogRecorderInstance?: ApiLogRecorder
   private organizationsInstance?: OrganizationService
+  private accessInstance?: AccessPolicy
   private organizationAuditInstance?: OrganizationAudit
   private publicContextInstance?: PublicContextResolver
   private snsVerifierInstance?: SnsVerifier
@@ -181,6 +183,10 @@ export class Container {
   /** REST API requests rejected before a key (and so an organization) was known. */
   get apiLogRecorder(): ApiLogRecorder {
     return (this.apiLogRecorderInstance ??= new ApiLogRecorder(this.db))
+  }
+
+  get access(): AccessPolicy {
+    return (this.accessInstance ??= new AccessPolicy(this.db, this.audit))
   }
 
   get organizations(): OrganizationService {
