@@ -24,9 +24,13 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "quality": "turbo run quality",
-    "quality:fix": "turbo run quality:fix"
+    "quality:fix": "turbo run quality:fix",
+    "changeset": "changeset",
+    "version-packages": "changeset version && npm pkg set version=$(node -p \"require('./packages/sdk/package.json').version\")"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "1.0.1",
+    "@changesets/cli": "3.0.3",
     "@oxlint/plugins": "1.92.0",
     "oxfmt": "0.77.0",
     "oxlint": "1.92.0",
