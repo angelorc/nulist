@@ -104,11 +104,7 @@ async function onSubmit(event: FormSubmitEvent<ContactCreateData>) {
             <UInput v-model="state.lastName" placeholder="Doe" class="w-full" />
           </UFormField>
         </div>
-        <UFormField
-          label="Lists"
-          name="listIds"
-          :help="listsHelp"
-        >
+        <UFormField label="Lists" name="listIds" :help="listsHelp">
           <USelectMenu
             v-model="state.listIds"
             :items="listItems"
