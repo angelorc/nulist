@@ -9,6 +9,7 @@ import type { SnsEnvelope } from '../server/lib/events/SnsVerifier'
 import type { DeliveryResult } from '../server/lib/transactional/TransactionalService'
 import { WebhookService } from '../server/lib/webhooks/WebhookService'
 import { API_KEY_SCOPES } from '../shared/auth/permissions'
+import { broadcastCreateSchema } from '../shared/schemas/broadcasts'
 import { transactionalEmailSchema } from '../shared/schemas/transactional'
 import type { TransactionalEmailInput } from '../shared/schemas/transactional'
 import type { ContactStatus, JsonObject, SuppressionReason } from '../shared/types/domain'
@@ -221,6 +222,20 @@ describe('SES events', () => {
       'click',
       'open'
     ])
+  })
+})
+
+describe('broadcast drafts', () => {
+  it('are named after their subject when no name is given, else stay untitled', async () => {
+    const org = await platform.organization('Broadcast names')
+
+    const create = async (input: z.input<typeof broadcastCreateSchema>) =>
+      (await org.services.broadcasts.create(broadcastCreateSchema.parse(input), org.actor)).name
+
+    expect(await create({ name: 'Launch', subject: 'Spring sale' })).toBe('Launch')
+    expect(await create({ name: '  ', subject: 'Spring sale' })).toBe('Spring sale')
+    expect(await create({ subject: 'Spring sale' })).toBe('Spring sale')
+    expect(await create({})).toBe('Untitled broadcast')
   })
 })
 

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
-import { broadcastUpdateSchema, campaignSlug } from '#shared/schemas/broadcasts'
+import {
+  broadcastNameFallback,
+  broadcastUpdateSchema,
+  campaignSlug
+} from '#shared/schemas/broadcasts'
 import type { BroadcastUpdateInput } from '#shared/schemas/broadcasts'
 import type {
   AudienceListOption,
@@ -72,7 +76,7 @@ const draft = reactive<DraftState>(toDraft(props.broadcast))
 
 function payload(): BroadcastUpdateInput {
   return {
-    name: draft.name.trim() || 'Untitled broadcast',
+    name: broadcastNameFallback(draft.name, draft.subject),
     subject: draft.subject.trim(),
     preheader: draft.preheader.trim(),
     fromName: draft.fromName.trim(),
@@ -501,7 +505,7 @@ const campaignPlaceholder = computed(() => campaignSlug(draft.name || 'broadcast
           <UInput
             v-model="draft.name"
             variant="ghost"
-            placeholder="Untitled broadcast"
+            :placeholder="broadcastNameFallback(null, draft.subject)"
             aria-label="Broadcast name"
             maxlength="120"
             :disabled="readOnly"
