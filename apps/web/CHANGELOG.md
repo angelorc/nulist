@@ -1,5 +1,17 @@
 # @nulist/web
 
+## 0.2.2
+
+### Patch Changes
+
+- [#18](https://github.com/angelorc/nulist/pull/18) [`6281288`](https://github.com/angelorc/nulist/commit/62812883107593f069061f76f23c03e2ac594565) Thanks [@angelorc](https://github.com/angelorc)! - Add contact closes the list menu after each pick, so the "Skip the confirmation email" switch is visible before submitting, and the lists help text says when a confirmation email is sent.
+
+- [#17](https://github.com/angelorc/nulist/pull/17) [`279e033`](https://github.com/angelorc/nulist/commit/279e033c1ad59f99ea7ee20ab53cea9d15c029db) Thanks [@angelorc](https://github.com/angelorc)! - Recent imports on the contact import page line up with the wizard steps.
+
+- [#22](https://github.com/angelorc/nulist/pull/22) [`54f0d60`](https://github.com/angelorc/nulist/commit/54f0d60058e853924a1c5d8110a9ef1321207a16) Thanks [@angelorc](https://github.com/angelorc)! - Record Amazon SES open and click events again: SES reports `isBotEvent` as `Likely` / `Unlikely` and sends `linkTags: null`, which the event schema rejected, so open and click rates stayed empty.
+
+- [#21](https://github.com/angelorc/nulist/pull/21) [`04d6fb7`](https://github.com/angelorc/nulist/commit/04d6fb7fec107fdd9918f2c70fc04612b36d225b) Thanks [@angelorc](https://github.com/angelorc)! - The text and heading formatting toolbar in the visual editor stays inside the visible canvas: above the block when there is room, below it otherwise, pinned to the top of the canvas as a last resort, so smaller screens no longer need browser zoom to reach it.
+
 ## 0.2.1
 
 ### Patch Changes
