@@ -29,6 +29,7 @@
     "@better-auth/api-key": "1.7.18",
     "@codemirror/lang-html": "^6.4.12",
     "@codemirror/lang-xml": "^6.1.0",
+    "@iconify-json/logos": "^1.2.19",
     "@iconify-json/lucide": "^1.2.152",
     "@iconify-json/simple-icons": "^1.2.102",
     "@nuxt/ui": "^4.12.0",
