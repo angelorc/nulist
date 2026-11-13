@@ -714,7 +714,7 @@ const readiness = computed(() => {
         </UTimeline>
 
         <!-- Recent imports -->
-        <section class="space-y-3" aria-labelledby="recent-imports">
+        <section class="space-y-3" :class="{ 'ps-10': !importId }" aria-labelledby="recent-imports">
           <div class="flex items-center justify-between">
             <h2 id="recent-imports" class="text-base font-semibold text-highlighted">
               Recent imports
