@@ -152,7 +152,7 @@ const httpBadge = computed<BadgeProps>(() => {
 
         <section class="space-y-2" aria-labelledby="delivery-payload">
           <h3 id="delivery-payload" class="text-[13px] font-medium text-highlighted">Payload</h3>
-          <JsonBlock :value="delivery.payload" label="Payload" max-height="20rem" />
+          <JsonBlock :value="delivery.payload" label="Payload" />
         </section>
 
         <section class="space-y-2" aria-labelledby="delivery-response">
@@ -161,13 +161,11 @@ const httpBadge = computed<BadgeProps>(() => {
             v-if="responseJson !== undefined"
             :value="responseJson"
             label="Response body"
-            max-height="14rem"
           />
           <CodeBlock
             v-else-if="delivery.responseBody"
             :code="delivery.responseBody"
             label="Response body"
-            max-height="14rem"
           />
           <p v-else class="text-[13px] text-muted">No response body.</p>
         </section>

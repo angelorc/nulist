@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
+
 /**
  * One KPI tile (DESIGN.md §6): 13px muted label → 28px tabular value → delta vs the previous
  * period → optional sparkline. Tiles sit in a hairline grid
@@ -17,7 +19,7 @@ const props = withDefaults(
     spark?: number[]
     /** Explains the metric (tooltip, and read by screen readers). */
     hint?: string
-    to?: string
+    to?: RouteLocationRaw
     loading?: boolean
   }>(),
   {

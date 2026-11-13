@@ -13,6 +13,11 @@ export const tableUi = {
   base: 'table-fixed w-full'
 } as const
 
+/** `tableUi` for tables beside a side panel: scrolls sideways instead of crushing the text columns. */
+export const wideTableUi = {
+  base: 'table-fixed w-full min-w-3xl'
+} as const
+
 /**
  * Whether a row click started on a control inside the row.
  *

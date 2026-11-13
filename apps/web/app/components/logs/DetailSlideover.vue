@@ -29,9 +29,13 @@ function go(target: string | undefined) {
   if (target) id.value = target
 }
 
+const nestedOverlays = provideNestedOverlays()
+
+const navigable = computed(() => open.value && nestedOverlays.value === 0)
+
 defineShortcuts({
-  j: () => open.value && go(nextId.value),
-  k: () => open.value && go(prevId.value)
+  j: () => navigable.value && go(nextId.value),
+  k: () => navigable.value && go(prevId.value)
 })
 </script>
 

@@ -126,13 +126,12 @@ const tags = computed(() => Object.entries(props.message.tags ?? {}))
       </template>
 
       <template #text>
-        <pre
+        <CodeBlock
           v-if="message.text"
-          tabindex="0"
-          role="region"
-          aria-label="Plain-text body"
-          class="text-[13px] leading-6 font-mono whitespace-pre-wrap break-words bg-elevated/60 ring ring-default rounded-md p-3 max-h-[560px] overflow-auto"
-          >{{ message.text }}</pre>
+          :code="message.text"
+          label="Plain-text body"
+          max-height="min(35rem, 70vh)"
+        />
         <EmptyState
           v-else
           icon="i-lucide-file-x"
@@ -162,7 +161,7 @@ const tags = computed(() => Object.entries(props.message.tags ?? {}))
 
           <div v-if="message.variables && Object.keys(message.variables).length" class="space-y-2">
             <h4 class="text-[13px] font-medium text-highlighted">Variables</h4>
-            <JsonBlock :value="message.variables" label="Variables" max-height="16rem" />
+            <JsonBlock :value="message.variables" label="Variables" />
           </div>
         </div>
       </template>

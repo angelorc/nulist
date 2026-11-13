@@ -1,10 +1,11 @@
 <script lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
 import type { Kpi } from '#shared/types/domain'
 
 /** A secondary metric with its explanation and, for members who can read logs, a link. */
 export interface RateStat extends Kpi {
   hint?: string
-  to?: string
+  to?: RouteLocationRaw
 }
 </script>
 

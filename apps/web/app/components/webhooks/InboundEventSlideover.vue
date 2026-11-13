@@ -5,6 +5,9 @@ import type { InboundEventDetail } from '#shared/schemas/webhooks'
 const props = defineProps<{ eventId: string }>()
 const emit = defineEmits<{ close: [] }>()
 
+const { can } = useOrganization()
+const canReadLogs = computed(() => can({ log: ['read'] }))
+
 const url: string = `/api/inbound-events/${props.eventId}`
 
 const {
@@ -96,8 +99,18 @@ const title = computed(() => (inbound.value ? inboundEventLabel(inbound.value) :
           </template>
           <template v-if="inbound.messageId">
             <dt class="text-muted">Message</dt>
-            <dd class="flex min-w-0">
+            <dd class="flex min-w-0 items-center gap-2">
               <CopyText :value="inbound.messageId" />
+              <UButton
+                v-if="canReadLogs"
+                label="View email"
+                variant="link"
+                size="xs"
+                trailing-icon="i-lucide-arrow-right"
+                class="shrink-0"
+                :to="LogLinks.emails({ id: inbound.messageId })"
+                @click="emit('close')"
+              />
             </dd>
           </template>
         </dl>
@@ -106,7 +119,7 @@ const title = computed(() => (inbound.value ? inboundEventLabel(inbound.value) :
           <h3 id="inbound-event-payload" class="text-[13px] font-medium text-highlighted">
             Payload
           </h3>
-          <JsonBlock :value="inbound.payload" label="Payload" max-height="28rem" />
+          <JsonBlock :value="inbound.payload" label="Payload" />
         </section>
       </template>
     </template>

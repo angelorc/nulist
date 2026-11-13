@@ -8,7 +8,6 @@ import {
   ilike,
   inArray,
   lt,
-  lte,
   max,
   notInArray,
   or,
@@ -29,18 +28,25 @@ import {
 } from '../../db/schema'
 import type { Paginated } from '../../../shared/types/domain'
 import type {
+  ApiFacetKey,
   ApiLogDetail,
+  ApiLogFacets,
   ApiLogItem,
   ApiLogStats,
   AuditLogItem,
+  EmailEngagement,
   EmailEventItem,
+  EmailFacetKey,
   EmailLogDetail,
+  EmailLogFacets,
   EmailLogItem,
   EmailLogStats,
   EmailOutcome,
   InboundEventDetail,
+  InboundEventFacets,
   InboundEventItem,
   InboundEventStats,
+  InboundFacetKey,
   InboundStatus,
   StatusClass
 } from '../../../shared/types/logs'
@@ -54,6 +60,7 @@ import {
 import type { ApiLogQuery, EmailLogQuery, InboundEventQuery } from '../../../shared/schemas/logs'
 import { containsPattern } from '../core/sql'
 import type { TenantScope } from '../core/TenantScope'
+import { FacetCounter } from './FacetCounter'
 import { LogWindow } from './LogWindow'
 import { SesEventSummary } from './SesEventSummary'
 
@@ -68,7 +75,15 @@ const STATUS_OUTCOME = new Map(
   )
 )
 
-const since = LogWindow.since
+const HIGH_CARDINALITY_LIMIT = 20
+
+const ENGAGEMENT = sql<EmailEngagement>`case when ${messages.clickCount} > 0 then 'clicked' when ${messages.openCount} > 0 then 'opened' else 'none' end`
+
+const STATUS_CLASS = sql<StatusClass>`(${apiLogs.statusCode} / 100)::text || 'xx'`
+
+const INBOUND_TYPE = sql<string>`coalesce(${inboundEvents.eventType}, ${inboundEvents.type})`
+
+const INBOUND_MESSAGE = sql<string>`coalesce(${inboundEvents.payload}->>'Message', ${inboundEvents.payload}::text)`
 
 function tally(condition: SQL): SQL<number> {
   return sql<number>`count(*) filter (where ${condition})`.mapWith(Number)
@@ -97,20 +112,23 @@ export class LogService {
   // Emails ------------------------------------------------------------------
   private emailFilters(query: EmailLogQuery): SQL | undefined {
     const m = messages
-    const from = query.from ?? since(query.period)
+    const { from, to } = LogWindow.bounds(query)
 
     return and(
       this.scope.eq(m.organizationId),
       query.q
         ? or(ilike(m.toEmail, containsPattern(query.q)), ilike(m.subject, containsPattern(query.q)))
         : undefined,
-      query.status ? eq(m.status, query.status) : undefined,
+      query.status ? inArray(m.status, query.status) : undefined,
       query.outcome ? inArray(m.status, [...EMAIL_OUTCOME_STATUSES[query.outcome]]) : undefined,
-      query.kind ? eq(m.kind, query.kind) : undefined,
-      query.broadcastId ? eq(m.broadcastId, query.broadcastId) : undefined,
+      query.kind ? inArray(m.kind, query.kind) : undefined,
+      query.engagement ? inArray(ENGAGEMENT, query.engagement) : undefined,
+      query.broadcastId ? inArray(m.broadcastId, query.broadcastId) : undefined,
       query.contactId ? eq(m.contactId, query.contactId) : undefined,
+      query.templateId ? eq(m.templateId, query.templateId) : undefined,
+      query.recipient ? sql`lower(${m.toEmail}) = lower(${query.recipient})` : undefined,
       from ? gte(m.createdAt, from) : undefined,
-      query.to ? lte(m.createdAt, query.to) : undefined
+      to ? lt(m.createdAt, to) : undefined
     )
   }
 
@@ -160,7 +178,7 @@ export class LogService {
 
   async emailStats(query: EmailLogQuery): Promise<EmailLogStats> {
     const m = messages
-    const window = LogWindow.of(query.period)
+    const window = LogWindow.of(query)
     const scoped = this.emailFilters({ ...query, status: undefined, outcome: undefined })
     const bucket = window.bucketKey(m.createdAt)
 
@@ -174,7 +192,7 @@ export class LogService {
           other: tally(notInArray(m.status, [...OK_STATUSES, ...ISSUE_STATUSES]))
         })
         .from(m)
-        .where(and(scoped, gte(m.createdAt, window.from)))
+        .where(and(scoped, window.within(m.createdAt)))
         .groupBy(sql`1`),
       this.db
         .select({ value: max(m.createdAt) })
@@ -200,8 +218,53 @@ export class LogService {
       facets,
       volume: window.fill(volume),
       bucket: window.bucket,
-      window: window.period,
+      window: window.range,
       lastAt: last?.value ? iso(last.value) : null
+    }
+  }
+
+  async emailFacets(query: EmailLogQuery): Promise<EmailLogFacets> {
+    const m = messages
+
+    const facets = new FacetCounter<EmailFacetKey>(
+      this.db,
+      m,
+      (key) => this.emailFilters({ ...query, [key]: undefined }),
+      query
+    )
+
+    const [status, kind, engagement, broadcastId, [contact], [template]] = await Promise.all([
+      facets.count('status', { value: m.status }),
+      facets.count('kind', { value: m.kind }),
+      facets.count('engagement', { value: ENGAGEMENT }),
+      facets.count('broadcastId', {
+        value: m.broadcastId,
+        label: {
+          table: broadcasts,
+          on: eq(broadcasts.id, m.broadcastId),
+          name: broadcasts.name,
+          id: broadcasts.id,
+          scope: this.scope.eq(broadcasts.organizationId)
+        },
+        limit: HIGH_CARDINALITY_LIMIT
+      }),
+      query.contactId
+        ? this.db
+            .select({ id: contacts.id, email: contacts.email })
+            .from(contacts)
+            .where(and(this.scope.eq(contacts.organizationId), eq(contacts.id, query.contactId)))
+        : [],
+      query.templateId
+        ? this.db
+            .select({ id: templates.id, name: templates.name })
+            .from(templates)
+            .where(and(this.scope.eq(templates.organizationId), eq(templates.id, query.templateId)))
+        : []
+    ])
+
+    return {
+      facets: { status, kind, engagement, broadcastId },
+      scope: { contact: contact ?? null, template: template ?? null }
     }
   }
 
@@ -287,7 +350,7 @@ export class LogService {
   // Inbound provider events -------------------------------------------------
   private inboundFilters(query: InboundEventQuery): SQL | undefined {
     const ie = inboundEvents
-    const from = since(query.period)
+    const { from, to } = LogWindow.bounds(query)
 
     return and(
       this.scope.eq(ie.organizationId),
@@ -299,9 +362,11 @@ export class LogService {
             ilike(sql`${ie.payload}::text`, containsPattern(query.q))
           )
         : undefined,
-      query.status ? eq(ie.status, query.status) : undefined,
-      query.eventType ? eq(ie.eventType, query.eventType) : undefined,
-      from ? gte(ie.createdAt, from) : undefined
+      query.status ? inArray(ie.status, query.status) : undefined,
+      query.eventType ? inArray(ie.eventType, query.eventType) : undefined,
+      query.recipient ? ilike(INBOUND_MESSAGE, containsPattern(`"${query.recipient}"`)) : undefined,
+      from ? gte(ie.createdAt, from) : undefined,
+      to ? lt(ie.createdAt, to) : undefined
     )
   }
 
@@ -393,7 +458,7 @@ export class LogService {
 
   async inboundStats(query: InboundEventQuery): Promise<InboundEventStats> {
     const ie = inboundEvents
-    const window = LogWindow.of(query.period)
+    const window = LogWindow.of(query)
     const scoped = this.inboundFilters({ ...query, status: undefined, eventType: undefined })
     const bucket = window.bucketKey(ie.createdAt)
 
@@ -404,7 +469,7 @@ export class LogService {
         .where(scoped)
         .groupBy(ie.status),
       this.db
-        .select({ type: sql<string>`coalesce(${ie.eventType}, ${ie.type})`, value: count() })
+        .select({ type: INBOUND_TYPE, value: count() })
         .from(ie)
         .where(scoped)
         .groupBy(sql`1`)
@@ -417,7 +482,7 @@ export class LogService {
           other: tally(eq(ie.status, 'ignored'))
         })
         .from(ie)
-        .where(and(scoped, gte(ie.createdAt, window.from)))
+        .where(and(scoped, window.within(ie.createdAt)))
         .groupBy(sql`1`),
       this.db
         .select({ value: max(ie.createdAt) })
@@ -435,9 +500,27 @@ export class LogService {
       types: types.map((row) => ({ type: row.type, count: row.value })),
       volume: window.fill(volume),
       bucket: window.bucket,
-      window: window.period,
+      window: window.range,
       lastAt: last?.value ? iso(last.value) : null
     }
+  }
+
+  async inboundFacets(query: InboundEventQuery): Promise<InboundEventFacets> {
+    const ie = inboundEvents
+
+    const facets = new FacetCounter<InboundFacetKey>(
+      this.db,
+      ie,
+      (key) => this.inboundFilters({ ...query, [key]: undefined }),
+      query
+    )
+
+    const [status, eventType] = await Promise.all([
+      facets.count('status', { value: ie.status }),
+      facets.count('eventType', { value: INBOUND_TYPE })
+    ])
+
+    return { facets: { status, eventType } }
   }
 
   // API requests ------------------------------------------------------------
@@ -479,18 +562,22 @@ export class LogService {
 
   private apiFilters(query: ApiLogQuery): SQL | undefined {
     const a = apiLogs
-    const from = since(query.period)
-    const statusFloor = query.status ? STATUS_CLASS_RANGE[query.status] : undefined
+    const { from, to } = LogWindow.bounds(query)
+
+    const statusClasses = query.status?.map((status) => {
+      const floor = STATUS_CLASS_RANGE[status]
+
+      return and(gte(a.statusCode, floor), lt(a.statusCode, floor + 100))
+    })
 
     return and(
       this.scope.eq(a.organizationId),
       query.q ? ilike(a.path, containsPattern(query.q)) : undefined,
-      query.method ? eq(a.method, query.method) : undefined,
-      statusFloor
-        ? and(gte(a.statusCode, statusFloor), lt(a.statusCode, statusFloor + 100))
-        : undefined,
-      query.apiKeyId ? eq(a.apiKeyId, query.apiKeyId) : undefined,
-      from ? gte(a.createdAt, from) : undefined
+      query.method ? inArray(a.method, query.method) : undefined,
+      statusClasses ? or(...statusClasses) : undefined,
+      query.apiKeyId ? inArray(a.apiKeyId, query.apiKeyId) : undefined,
+      from ? gte(a.createdAt, from) : undefined,
+      to ? lt(a.createdAt, to) : undefined
     )
   }
 
@@ -539,14 +626,13 @@ export class LogService {
 
   async apiStats(query: ApiLogQuery): Promise<ApiLogStats> {
     const a = apiLogs
-    const window = LogWindow.of(query.period)
+    const window = LogWindow.of(query)
     const scoped = this.apiFilters({ ...query, status: undefined })
     const bucket = window.bucketKey(a.createdAt)
-    const classOf = sql<StatusClass>`(${a.statusCode} / 100)::text || 'xx'`
 
     const [byClass, [latency], volume, [last]] = await Promise.all([
       this.db
-        .select({ status: classOf, value: count() })
+        .select({ status: STATUS_CLASS, value: count() })
         .from(a)
         .where(scoped)
         .groupBy(sql`1`),
@@ -566,7 +652,7 @@ export class LogService {
           other: sql<number>`0`.mapWith(Number)
         })
         .from(a)
-        .where(and(scoped, gte(a.createdAt, window.from)))
+        .where(and(scoped, window.within(a.createdAt)))
         .groupBy(sql`1`),
       this.db
         .select({ value: max(a.createdAt) })
@@ -584,9 +670,38 @@ export class LogService {
       p95Ms: latency?.p95 == null ? null : Math.round(latency.p95),
       volume: window.fill(volume),
       bucket: window.bucket,
-      window: window.period,
+      window: window.range,
       lastAt: last?.value ? iso(last.value) : null
     }
+  }
+
+  async apiFacets(query: ApiLogQuery): Promise<ApiLogFacets> {
+    const a = apiLogs
+
+    const facets = new FacetCounter<ApiFacetKey>(
+      this.db,
+      a,
+      (key) => this.apiFilters({ ...query, [key]: undefined }),
+      query
+    )
+
+    const [status, method, apiKeyId] = await Promise.all([
+      facets.count('status', { value: STATUS_CLASS }),
+      facets.count('method', { value: a.method }),
+      facets.count('apiKeyId', {
+        value: a.apiKeyId,
+        label: {
+          table: apikey,
+          on: eq(apikey.id, a.apiKeyId),
+          name: apikey.name,
+          id: apikey.id,
+          scope: this.scope.eq(apikey.referenceId)
+        },
+        limit: HIGH_CARDINALITY_LIMIT
+      })
+    ])
+
+    return { facets: { status, method, apiKeyId } }
   }
 
   // Audit -------------------------------------------------------------------

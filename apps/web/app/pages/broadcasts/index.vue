@@ -16,6 +16,7 @@ const { can } = useOrganization()
 const canCreate = computed(() => can({ broadcast: ['create'] }))
 const canEdit = computed(() => can({ broadcast: ['update'] }))
 const canDelete = computed(() => can({ broadcast: ['delete'] }))
+const canReadLogs = computed(() => can({ log: ['read'] }))
 
 interface TabOption {
   label: string
@@ -171,6 +172,13 @@ function rowActions(row: BroadcastListItem): DropdownMenuItem[][] {
       to: `/broadcasts/${row.id}`
     }
   ]
+
+  if (!draft && canReadLogs.value)
+    open.push({
+      label: 'View emails in Logs',
+      icon: 'i-lucide-scroll-text',
+      to: LogLinks.emails({ broadcastId: row.id })
+    })
 
   if (canCreate.value)
     open.push({ label: 'Duplicate', icon: 'i-lucide-copy', onSelect: () => onDuplicate(row) })

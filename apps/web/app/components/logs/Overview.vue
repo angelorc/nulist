@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { LogStats, LogVolumePoint } from '#shared/types/logs'
+import type { LogStats, LogVolumePoint, LogWindowRange } from '#shared/types/logs'
 
 export type OverviewTone = 'neutral' | 'success' | 'warning' | 'error' | 'info'
 
@@ -21,8 +21,7 @@ export interface OverviewSeries {
 </script>
 
 <script setup lang="ts">
-import { format } from 'date-fns'
-import type { VNode } from 'vue'
+import { format, parseISO } from 'date-fns'
 
 const props = withDefaults(
   defineProps<{
@@ -36,8 +35,6 @@ const props = withDefaults(
 )
 
 const selected = defineModel<string | undefined>('selected')
-
-defineSlots<{ facets?: () => VNode[] }>()
 
 const TONE_DOT: Record<OverviewTone, string> = {
   neutral: 'bg-(--ui-color-neutral-400)',
@@ -102,7 +99,38 @@ const volumeTotal = computed(() =>
   rows.value.reduce((sum, p) => sum + p.ok + p.issues + p.other, 0)
 )
 
-const windowLabel = computed(() => (props.stats ? WINDOW_LABEL[props.stats.window] : ''))
+/** The UTC day of an instant, as a local date for formatting. */
+const utcDay = (instant: number) => parseISO(new Date(instant).toISOString().slice(0, 10))
+
+function rangeLabel(window: LogWindowRange): string {
+  const start = utcDay(Date.parse(window.from))
+  const end = utcDay(Date.parse(window.to) - 1)
+  const thisYear = new Date().getFullYear()
+
+  if (start.getFullYear() !== end.getFullYear()) {
+    return `${format(start, 'd MMM yyyy')} – ${format(end, 'd MMM yyyy')}`
+  }
+
+  const tail = end.getFullYear() === thisYear ? 'd MMM' : 'd MMM yyyy'
+
+  if (start.getTime() >= end.getTime()) return format(start, tail)
+
+  const head = start.getMonth() === end.getMonth() ? 'd' : 'd MMM'
+
+  return `${format(start, head)} – ${format(end, tail)}`
+}
+
+const windowLabel = computed(() => {
+  const window = props.stats?.window
+
+  if (!window) return ''
+
+  return window.period ? WINDOW_LABEL[window.period] : rangeLabel(window)
+})
+
+const emptyLabel = computed(() =>
+  props.stats?.window.period ? `in the ${windowLabel.value}` : 'in this date range'
+)
 </script>
 
 <template>
@@ -168,20 +196,18 @@ const windowLabel = computed(() => (props.stats ? WINDOW_LABEL[props.stats.windo
           <template v-if="stats"> · {{ windowLabel }} · {{ number(volumeTotal) }} total </template>
         </p>
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <slot name="facets">
+          <span
+            v-for="c in categories"
+            :key="c.key"
+            class="inline-flex items-center gap-1.5 text-xs text-muted"
+          >
             <span
-              v-for="c in categories"
-              :key="c.key"
-              class="inline-flex items-center gap-1.5 text-xs text-muted"
-            >
-              <span
-                class="size-2 rounded-full"
-                :style="{ backgroundColor: c.color }"
-                aria-hidden="true"
-              />
-              {{ c.label }}
-            </span>
-          </slot>
+              class="size-2 rounded-full"
+              :style="{ backgroundColor: c.color }"
+              aria-hidden="true"
+            />
+            {{ c.label }}
+          </span>
         </div>
       </div>
       <div class="relative mt-1 transition-opacity" :class="refreshing && 'opacity-60'">
@@ -205,7 +231,7 @@ const windowLabel = computed(() => (props.stats ? WINDOW_LABEL[props.stats.windo
           class="absolute inset-0 grid place-items-center pointer-events-none"
         >
           <p class="text-[13px] text-muted bg-default/90 px-3 py-1.5 rounded-md ring ring-default">
-            Nothing recorded in the {{ windowLabel }}
+            Nothing recorded {{ emptyLabel }}
           </p>
         </div>
       </div>

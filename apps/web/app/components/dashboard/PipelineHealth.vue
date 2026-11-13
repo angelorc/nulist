@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { AnalyticsRange } from '#shared/types/analytics'
+import type { RouteLocationRaw } from 'vue-router'
 import type { ApiLogStats, EmailLogStats, InboundEventStats } from '#shared/types/logs'
+import type { DateRangeValue } from '~/utils/logLinks'
 
 type Tone = 'success' | 'warning' | 'error' | 'neutral'
 
@@ -8,14 +9,14 @@ interface PipelineRow {
   key: string
   icon: string
   title: string
-  to: string
+  to: RouteLocationRaw
   tone: Tone
   state: string
   lastAt: string | null
   facts: { label: string; value: string }[]
 }
 
-const props = defineProps<{ range: AnalyticsRange }>()
+const props = defineProps<{ range: DateRangeValue }>()
 
 const { organization } = useOrganization()
 const { number, percent } = useFormat()
@@ -27,10 +28,12 @@ const TONE_DOT: Record<Tone, string> = {
   neutral: 'bg-(--ui-color-neutral-400)'
 }
 
-const query = computed(() => ({ period: props.range }))
+const query = computed(() =>
+  LogLinks.query({ period: props.range.period, from: props.range.from, to: props.range.to })
+)
 
 const key = (name: string) => () =>
-  `dashboard-pipeline:${name}:${organization.value?.id ?? 'none'}:${props.range}`
+  `dashboard-pipeline:${name}:${organization.value?.id ?? 'none'}:${Object.values(query.value).join(':')}`
 
 const options = { query, lazy: true, server: false, default: () => null } as const
 
@@ -47,7 +50,9 @@ const emails = useFetch<EmailLogStats | null>('/api/logs/emails/stats', {
 })
 
 const loading = computed(() =>
-  [events, api, emails].some((r) => r.status.value === 'pending' && !r.data.value)
+  [events, api, emails].some(
+    (r) => r.status.value !== 'success' && r.status.value !== 'error' && !r.data.value
+  )
 )
 
 const rows = computed<PipelineRow[]>(() => {
@@ -62,7 +67,7 @@ const rows = computed<PipelineRow[]>(() => {
       key: 'ses',
       icon: 'i-lucide-radio-tower',
       title: 'Amazon SES events',
-      to: '/logs?tab=events',
+      to: LogLinks.events({ ...props.range }),
       tone: !e?.lastAt ? 'neutral' : e.facets.failed ? 'warning' : 'success',
       state: !e?.lastAt
         ? 'No events received yet'
@@ -79,7 +84,7 @@ const rows = computed<PipelineRow[]>(() => {
       key: 'api',
       icon: 'i-lucide-terminal',
       title: 'REST API',
-      to: '/logs?tab=api',
+      to: LogLinks.api({ ...props.range }),
       tone: !a?.total ? 'neutral' : serverErrors ? 'error' : apiErrors ? 'warning' : 'success',
       state: !a?.total
         ? 'No requests in this period'
@@ -96,7 +101,7 @@ const rows = computed<PipelineRow[]>(() => {
       key: 'queue',
       icon: 'i-lucide-send',
       title: 'Sending',
-      to: '/logs?tab=emails',
+      to: LogLinks.emails({ ...props.range }),
       tone: !m?.total ? 'neutral' : m.facets.issues ? 'warning' : 'success',
       state: !m?.total
         ? 'Nothing sent in this period'

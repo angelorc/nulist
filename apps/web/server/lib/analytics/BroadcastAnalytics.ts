@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import type { Database } from '../../db/client'
 import { broadcasts, emailEvents, messages } from '../../db/schema'
@@ -77,7 +77,7 @@ export class BroadcastAnalytics {
   }
 
   /** Best performing broadcasts started since `since`, ranked by click rate. */
-  async top(since: Date, limit = 5): Promise<TopBroadcast[]> {
+  async top(since: Date, until: Date, limit = 5): Promise<TopBroadcast[]> {
     const m = messages
     const delivered = sql<number>`count(${m.id}) filter (where ${m.deliveredAt} is not null)::int`
     const opened = sql<number>`count(${m.id}) filter (where ${m.openedAt} is not null)::int`
@@ -103,7 +103,8 @@ export class BroadcastAnalytics {
         and(
           this.scope.eq(broadcasts.organizationId),
           inArray(broadcasts.status, ['sent', 'sending']),
-          gte(sentAt, since)
+          gte(sentAt, since),
+          lt(sentAt, until)
         )
       )
       .groupBy(broadcasts.id)
@@ -148,7 +149,7 @@ export class BroadcastAnalytics {
         complained: count(sql`${m.status} = 'complained'`),
         failed: count(sql`${m.status} in ('failed', 'rejected')`),
         suppressed: count(sql`${m.status} = 'suppressed'`),
-        uniqueOpens: count(sql`${m.openedAt} is not null`),
+        uniqueOpens: count(sql`${m.openedAt} is not null or ${m.clickedAt} is not null`),
         uniqueClicks: count(sql`${m.clickedAt} is not null`)
       })
       .from(m)

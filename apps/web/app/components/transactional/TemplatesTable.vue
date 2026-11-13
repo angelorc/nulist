@@ -8,6 +8,7 @@ const NEW_TEMPLATE = '/templates?new=1&kind=transactional'
 
 const { can } = useOrganization()
 const canCreateTemplate = computed(() => can({ template: ['create'] }))
+const canReadLogs = computed(() => can({ log: ['read'] }))
 
 // Members who cannot edit templates open them read-only.
 const rowAction = computed(() =>
@@ -73,7 +74,22 @@ const columns: TableColumn<TransactionalTemplateItem>[] = [
         td: 'w-24 hidden sm:table-cell text-right tabular-nums text-muted'
       }
     },
-    cell: ({ row }) => number(row.original.sent7d)
+    cell: ({ row }) =>
+      canReadLogs.value && row.original.sent7d
+        ? h(
+            ULink,
+            {
+              to: LogLinks.emails({
+                kind: ['transactional'],
+                templateId: row.original.id,
+                period: '7d'
+              }),
+              class: 'text-muted hover:text-highlighted hover:underline underline-offset-2',
+              'aria-label': `View ${row.original.name} emails sent in the last 7 days`
+            },
+            () => number(row.original.sent7d)
+          )
+        : number(row.original.sent7d)
   },
   {
     accessorKey: 'updatedAt',

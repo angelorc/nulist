@@ -50,3 +50,41 @@ table th {
     scroll-behavior: auto !important;
   }
 }
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-border-accented) transparent;
+}
+
+@layer components {
+  .tok-propertyName,
+  .tok-attributeName {
+    color: color-mix(in oklab, var(--ui-primary) 80%, var(--ui-text-highlighted));
+  }
+
+  .tok-string,
+  .tok-string2 {
+    color: color-mix(in oklab, var(--ui-success) 70%, var(--ui-text-highlighted));
+  }
+
+  .tok-number,
+  .tok-bool,
+  .tok-atom {
+    color: color-mix(in oklab, var(--ui-warning) 70%, var(--ui-text-highlighted));
+  }
+
+  .tok-keyword,
+  .tok-typeName {
+    color: color-mix(in oklab, var(--ui-error) 75%, var(--ui-text-highlighted));
+  }
+
+  .tok-comment {
+    color: var(--ui-text-dimmed);
+    font-style: italic;
+  }
+
+  .tok-punctuation,
+  .tok-operator {
+    color: var(--ui-text-muted);
+  }
+}

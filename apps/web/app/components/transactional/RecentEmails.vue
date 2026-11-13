@@ -4,7 +4,7 @@ import type { TransactionalRecentEmail } from '#shared/schemas/transactional'
 
 defineProps<{ items: TransactionalRecentEmail[]; loading?: boolean }>()
 
-const logUrl = (id: string) => `/logs?tab=emails&id=${id}`
+const logUrl = (id: string) => LogLinks.emails({ id })
 
 const { can } = useOrganization()
 
@@ -89,7 +89,7 @@ function onSelect(_event: Event, row: TableRow<TransactionalRecentEmail>) {
         variant="ghost"
         size="sm"
         trailing-icon="i-lucide-arrow-right"
-        to="/logs?tab=emails&kind=transactional"
+        :to="LogLinks.emails({ kind: ['transactional'] })"
       />
     </template>
 

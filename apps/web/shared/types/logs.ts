@@ -20,13 +20,60 @@ export interface LogVolumePoint {
   other: number
 }
 
+export type EmailEngagement = 'clicked' | 'opened' | 'none'
+
+/** The time window a stats or facet response covers (ISO instants; `period` when a preset). */
+export interface LogWindowRange {
+  from: string
+  to: string
+  period: LogPeriod | null
+}
+
 export interface LogStats<F extends string> {
   total: number
   facets: Record<F, number>
   volume: LogVolumePoint[]
   bucket: 'hour' | 'day'
-  window: LogPeriod
+  window: LogWindowRange
   lastAt: string | null
+}
+
+/** One value of a facet with the number of entries it would match (disjunctive count). */
+export interface FacetBucket {
+  value: string
+  label: string | null
+  count: number
+}
+
+export type FacetCounts<K extends string> = Record<K, FacetBucket[]>
+
+export type EmailFacetKey = 'status' | 'kind' | 'engagement' | 'broadcastId'
+
+export type ApiFacetKey = 'status' | 'method' | 'apiKeyId'
+
+export type InboundFacetKey = 'status' | 'eventType'
+
+export type AuditFacetKey = 'actorType' | 'entityType' | 'action'
+
+export interface EmailLogFacets {
+  facets: FacetCounts<EmailFacetKey>
+  /** Labels for the pinned entity filters of the query (`contactId`, `templateId`). */
+  scope: {
+    contact: { id: string; email: string } | null
+    template: { id: string; name: string } | null
+  }
+}
+
+export interface ApiLogFacets {
+  facets: FacetCounts<ApiFacetKey>
+}
+
+export interface InboundEventFacets {
+  facets: FacetCounts<InboundFacetKey>
+}
+
+export interface AuditFacets {
+  facets: FacetCounts<AuditFacetKey>
 }
 
 export type EmailLogStats = LogStats<EmailOutcome>

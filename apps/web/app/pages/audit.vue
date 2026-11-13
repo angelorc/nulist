@@ -4,9 +4,17 @@ import { format, isToday, isYesterday } from 'date-fns'
 import { z } from 'zod'
 import type { PermissionRequest } from '#shared/auth/permissions'
 import type { JsonValue } from '#shared/types/domain'
-import type { AuditLogItem } from '#shared/types/logs'
+import type {
+  AuditFacetKey,
+  AuditFacets,
+  AuditLogItem,
+  FacetBucket,
+  LogPeriod
+} from '#shared/types/logs'
+import type { FacetOption } from '~/components/facets/Group.vue'
 import type { DetailRow } from '~/components/logs/DetailList.vue'
-import { selectedEntrySchema } from '#shared/schemas/logs'
+import type { DateRangeValue } from '~/utils/logLinks'
+import { dateRangeQuerySchema, selectedEntrySchema } from '#shared/schemas/logs'
 
 definePageMeta({ permission: { audit: ['read'] } })
 
@@ -14,20 +22,9 @@ useSeoMeta({ title: 'Audit log' })
 
 const ACTOR = AUDIT_ACTORS
 
-const ACTOR_ITEMS = [
-  { label: 'All actors', value: 'all' },
-  { label: 'Members', value: 'user', icon: ACTOR.user.icon },
-  { label: 'API keys', value: 'api_key', icon: ACTOR.api_key.icon },
-  { label: 'System', value: 'system', icon: ACTOR.system.icon }
-]
+const ACTOR_BY_TYPE = new Map<string, { icon: string; label: string }>(Object.entries(ACTOR))
 
-const PERIOD_ITEMS = [
-  { label: 'Any time', value: 'all' },
-  { label: 'Last 24 hours', value: '24h' },
-  { label: 'Last 7 days', value: '7d' },
-  { label: 'Last 30 days', value: '30d' },
-  { label: 'Last 90 days', value: '90d' }
-]
+const DATE_PRESETS: LogPeriod[] = ['24h', '7d', '30d', '90d']
 
 /** The page an audited entity lives on, and what the viewer needs to open it. */
 interface EntityLink {
@@ -84,20 +81,18 @@ function entityLabel(type: string): string {
 
 const shortId = (id: string) => (id.length > 12 ? `…${id.slice(-8)}` : id)
 
-const { data: entityTypes } = useFetch<string[]>('/api/audit/entity-types', { default: () => [] })
-
-const entityItems = computed(() => [
-  { label: 'All entities', value: 'all' },
-  ...entityTypes.value.map((type) => ({ label: entityLabel(type), value: type }))
-])
-
-/** Filter values as the select and the entity link hold them (`all` means no filter). */
+/** Filter values as the URL holds them: facet selections are comma-joined lists. */
 type AuditFilters = {
   entityType?: string
   entityId?: string
   actorType?: string
+  action?: string
   period?: string
+  from?: string
+  to?: string
 }
+
+const FACET_KEYS = ['actorType', 'entityType', 'action'] as const satisfies AuditFacetKey[]
 
 const {
   page,
@@ -112,8 +107,108 @@ const {
   isFiltered,
   clearFilters
 } = usePaginatedList<AuditLogItem, AuditFilters>('/api/audit', {
-  filters: { entityType: undefined, entityId: undefined, actorType: undefined, period: undefined }
+  filters: {
+    entityType: undefined,
+    entityId: undefined,
+    actorType: undefined,
+    action: undefined,
+    period: undefined,
+    from: undefined,
+    to: undefined
+  }
 })
+
+const dateRange = computed<DateRangeValue>({
+  get: () => {
+    const parsed = dateRangeQuerySchema.safeParse({
+      period: filters.period,
+      from: filters.from,
+      to: filters.to
+    })
+
+    return parsed.success ? parsed.data : {}
+  },
+  set: (value) => {
+    Object.assign(filters, { period: value.period, from: value.from, to: value.to })
+  }
+})
+
+const debouncedQ = refDebounced(q, 300)
+
+const facetQuery = computed(() => LogLinks.query({ q: debouncedQ.value, ...filters }))
+
+const {
+  data: facetData,
+  status: facetStatus,
+  refresh: refreshFacets
+} = useFetch<AuditFacets>('/api/audit/facets', { query: facetQuery, lazy: true })
+
+const facetsLoading = computed(() => facetStatus.value === 'pending')
+
+function facetOptions(
+  key: AuditFacetKey,
+  option: (bucket: FacetBucket) => Omit<FacetOption, 'value' | 'count'>
+): FacetOption[] {
+  return (facetData.value?.facets[key] ?? []).map((bucket) =>
+    Object.assign({ value: bucket.value, count: bucket.count }, option(bucket))
+  )
+}
+
+const actorOptions = computed(() =>
+  facetOptions('actorType', (bucket) => {
+    const actor = ACTOR_BY_TYPE.get(bucket.value)
+
+    return { label: actor?.label ?? bucket.value, icon: actor?.icon }
+  })
+)
+
+const entityOptions = computed(() =>
+  facetOptions('entityType', (bucket) => ({ label: entityLabel(bucket.value) }))
+)
+
+const actionOptions = computed(() =>
+  facetOptions('action', (bucket) => ({
+    label: bucket.value,
+    icon: auditVerb(bucket.value).icon
+  }))
+)
+
+const selectedCount = (value: string | undefined) =>
+  value ? value.split(',').filter(Boolean).length : 0
+
+const activeCount = computed(
+  () =>
+    FACET_KEYS.reduce((sum, key) => sum + selectedCount(filters[key]), 0) +
+    (filters.entityId ? 1 : 0) +
+    (q.value ? 1 : 0)
+)
+
+function clearFacets() {
+  q.value = ''
+  Object.assign(filters, {
+    entityType: undefined,
+    entityId: undefined,
+    actorType: undefined,
+    action: undefined
+  })
+}
+
+const entityScope = computed(() => {
+  const id = filters.entityId
+
+  if (!id) return undefined
+  const types = filters.entityType?.split(',').filter(Boolean) ?? []
+  const type = types.length === 1 ? `${entityLabel(types[0] ?? '')} ` : ''
+
+  return `Entity: ${type}${shortId(id)}`
+})
+
+const filtersOpen = ref(false)
+
+function refreshAll() {
+  void refresh()
+  void refreshFacets()
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -295,13 +390,68 @@ function filterByEntity() {
   filters.entityType = e.entityType
   filters.entityId = e.entityId
 }
-
-const search = useTemplateRef<{ inputRef?: HTMLInputElement | null }>('search')
-
-defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
 </script>
 
 <template>
+  <FacetsPanel
+    id="audit-facets"
+    v-model:open="filtersOpen"
+    :active="activeCount"
+    @clear="clearFacets"
+  >
+    <UInput
+      v-model="q"
+      icon="i-lucide-search"
+      placeholder="Search actions, actors…"
+      size="sm"
+      class="w-full"
+      aria-label="Search the audit log"
+    >
+      <template #trailing>
+        <UKbd v-if="!q" value="/" class="hidden lg:inline-flex" />
+        <UButton
+          v-else
+          icon="i-lucide-x"
+          variant="link"
+          size="xs"
+          aria-label="Clear search"
+          @click="q = ''"
+        />
+      </template>
+    </UInput>
+    <div v-if="entityScope" class="flex flex-wrap gap-1.5">
+      <UButton
+        :label="entityScope"
+        trailing-icon="i-lucide-x"
+        color="neutral"
+        variant="outline"
+        size="sm"
+        class="max-w-full"
+        :ui="{ label: 'truncate' }"
+        :aria-label="`Remove filter entity ${filters.entityId}`"
+        @click="filters.entityId = undefined"
+      />
+    </div>
+    <FacetsGroup
+      v-model="filters.actorType"
+      title="Actor"
+      :items="actorOptions"
+      :loading="facetsLoading"
+    />
+    <FacetsGroup
+      v-model="filters.entityType"
+      title="Entity"
+      :items="entityOptions"
+      :loading="facetsLoading"
+    />
+    <FacetsGroup
+      v-model="filters.action"
+      title="Action"
+      :items="actionOptions"
+      :loading="facetsLoading"
+    />
+  </FacetsPanel>
+
   <UDashboardPanel id="audit">
     <template #header>
       <UDashboardNavbar title="Audit log">
@@ -315,83 +465,19 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
         </template>
       </UDashboardNavbar>
 
-      <UDashboardToolbar
-        :ui="{ root: 'flex-wrap gap-y-2 py-2', left: 'flex-wrap', right: 'ms-auto' }"
-      >
-        <template #left>
-          <UInput
-            ref="search"
-            v-model="q"
-            icon="i-lucide-search"
-            placeholder="Search actions, actors or summaries…"
-            size="sm"
-            class="w-full sm:w-72"
-            aria-label="Search the audit log"
-          >
-            <template #trailing>
-              <UKbd v-if="!q" value="/" />
-              <UButton
-                v-else
-                icon="i-lucide-x"
-                variant="link"
-                size="xs"
-                aria-label="Clear search"
-                @click="q = ''"
-              />
-            </template>
-          </UInput>
-          <USelect
-            v-model="filters.entityType"
-            :items="entityItems"
-            placeholder="All entities"
-            size="sm"
-            class="w-44"
-            aria-label="Filter by entity type"
-          />
-          <USelect
-            v-model="filters.actorType"
-            :items="ACTOR_ITEMS"
-            placeholder="All actors"
-            size="sm"
-            class="w-36"
-            aria-label="Filter by actor"
-          />
-          <USelect
-            v-model="filters.period"
-            :items="PERIOD_ITEMS"
-            placeholder="Any time"
-            icon="i-lucide-calendar"
-            size="sm"
-            class="w-40"
-            aria-label="Filter by time range"
-          />
-          <UButton
-            v-if="filters.entityId"
-            :label="shortId(filters.entityId)"
-            trailing-icon="i-lucide-x"
-            variant="outline"
-            size="sm"
-            class="font-mono"
-            :aria-label="`Remove filter entity ${filters.entityId}`"
-            @click="filters.entityId = undefined"
-          />
-        </template>
+      <UDashboardToolbar :ui="{ right: 'ms-auto gap-1.5' }">
         <template #right>
-          <UButton
-            v-if="isFiltered"
-            label="Clear filters"
-            variant="ghost"
-            size="sm"
-            @click="clearFilters"
-          />
+          <DateRangePicker v-model="dateRange" :presets="DATE_PRESETS" any-time size="sm" />
+          <FacetsButton v-model:open="filtersOpen" :active="activeCount" size="sm" />
           <UTooltip text="Refresh">
             <UButton
               icon="i-lucide-refresh-cw"
+              color="neutral"
               variant="ghost"
               size="sm"
               aria-label="Refresh the audit log"
               :loading="loading"
-              @click="() => refresh()"
+              @click="refreshAll"
             />
           </UTooltip>
         </template>
@@ -494,7 +580,7 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
         v-else-if="isFiltered"
         variant="no-results"
         title="No entries match your filters"
-        description="Try another search term or entity type."
+        description="Try another search term, filter or time range."
       >
         <UButton label="Clear filters" variant="outline" @click="clearFilters" />
       </EmptyState>
@@ -565,12 +651,7 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
               caption="Field changes"
               :ui="tableUi"
             />
-            <JsonBlock
-              v-if="changes.data"
-              :value="changes.data"
-              label="Recorded data"
-              max-height="20rem"
-            />
+            <JsonBlock v-if="changes.data" :value="changes.data" label="Recorded data" />
             <p v-if="!changes.diff.length && !changes.data" class="text-[13px] text-muted">
               This action did not record field changes.
             </p>

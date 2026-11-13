@@ -48,6 +48,7 @@ export function usePaginatedList<
     void router.replace({
       query: {
         ...route.query,
+        ...Object.fromEntries(Object.keys(filters).map((key) => [key, undefined])),
         ...value,
         pageSize: undefined,
         page: value.page > 1 ? value.page : undefined

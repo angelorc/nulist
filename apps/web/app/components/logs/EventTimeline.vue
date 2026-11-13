@@ -237,7 +237,7 @@ function hasData(entry: TimelineEntry): boolean {
           />
         </template>
         <template #content>
-          <JsonBlock :value="item.data" label="Event data" max-height="16rem" />
+          <JsonBlock :value="item.data" label="Event data" />
         </template>
       </UCollapsible>
     </template>

@@ -5,6 +5,7 @@ import { contactProfileSchema } from '#shared/schemas/contacts'
 import type { ContactProfileInput } from '#shared/schemas/contacts'
 import type { ContactActivityItem, ContactDetail } from '#shared/types/contacts'
 import type { ContactStatus } from '#shared/types/domain'
+import type { EmailLogLink } from '~/utils/logLinks'
 
 definePageMeta({ permission: { contact: ['read'] } })
 
@@ -41,6 +42,8 @@ if (error.value || !contact.value) {
 const { can } = useOrganization()
 const canUpdate = computed(() => can({ contact: ['update'] }))
 const canDelete = computed(() => can({ contact: ['delete'] }))
+const canReadLogs = computed(() => can({ log: ['read'] }))
+const canReadAudit = computed(() => can({ audit: ['read'] }))
 
 const fullName = computed(() =>
   [contact.value?.firstName, contact.value?.lastName].filter(Boolean).join(' ')
@@ -305,6 +308,24 @@ const menuItems = computed(() => {
     ]
   ]
 
+  const history: DropdownMenuItem[] = []
+
+  if (canReadLogs.value)
+    history.push({
+      label: 'View emails in Logs',
+      icon: 'i-lucide-scroll-text',
+      to: LogLinks.emails({ contactId: id })
+    })
+
+  if (canReadAudit.value)
+    history.push({
+      label: 'View history',
+      icon: 'i-lucide-history',
+      to: LogLinks.audit({ entityType: 'contact', entityId: id })
+    })
+
+  if (history.length) groups.push(history)
+
   if (canUpdate.value) groups.push(statusItems)
 
   if (canDelete.value)
@@ -315,15 +336,27 @@ const menuItems = computed(() => {
   return groups
 })
 
+const emailLogs = (filters: EmailLogLink = {}) =>
+  canReadLogs.value ? LogLinks.emails({ contactId: id, ...filters }) : undefined
+
 const stats = computed(() => [
-  { label: 'Emails', value: contact.value?.stats.messages ?? 0 },
-  { label: 'Delivered', value: contact.value?.stats.delivered ?? 0 },
+  { label: 'Emails', value: contact.value?.stats.messages ?? 0, to: emailLogs() },
+  {
+    label: 'Delivered',
+    value: contact.value?.stats.delivered ?? 0,
+    to: emailLogs({ status: [...DELIVERED_STATUSES] })
+  },
   {
     label: 'Opened',
     value: contact.value?.stats.opened ?? 0,
-    hint: 'Estimated: Apple Mail Privacy Protection inflates opens'
+    hint: 'Estimated: Apple Mail Privacy Protection inflates opens',
+    to: emailLogs({ engagement: ['opened', 'clicked'] })
   },
-  { label: 'Clicked', value: contact.value?.stats.clicked ?? 0 }
+  {
+    label: 'Clicked',
+    value: contact.value?.stats.clicked ?? 0,
+    to: emailLogs({ engagement: ['clicked'] })
+  }
 ])
 </script>
 
@@ -401,6 +434,7 @@ const stats = computed(() => [
                 :label="stat.label"
                 :value="stat.value"
                 :hint="stat.hint"
+                :to="stat.to"
                 class="bg-default"
               />
             </div>

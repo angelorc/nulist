@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import type { BroadcastProgress } from '#shared/types/broadcasts'
-import type { BroadcastStatus } from '#shared/types/domain'
+import type { BroadcastStatus, MessageStatus } from '#shared/types/domain'
 
 /** Live sending progress with throughput-based time estimate. */
-const props = defineProps<{ status: BroadcastStatus; progress: BroadcastProgress }>()
+const props = defineProps<{
+  broadcastId: string
+  status: BroadcastStatus
+  progress: BroadcastProgress
+}>()
 
 const { number, percent } = useFormat()
+const { can } = useOrganization()
+const canReadLogs = computed(() => can({ log: ['read'] }))
 
 const processed = computed(
   () =>
@@ -55,11 +61,22 @@ const heading = computed(() => {
   return 'Sending…'
 })
 
+const emailLogs = (status: MessageStatus[]) =>
+  canReadLogs.value ? LogLinks.emails({ broadcastId: props.broadcastId, status }) : undefined
+
 const stats = computed(() => [
-  { label: 'Sent', value: props.progress.sent },
-  { label: 'Pending', value: props.progress.pending },
-  { label: 'Suppressed', value: props.progress.suppressed },
-  { label: 'Failed', value: props.progress.failed }
+  {
+    label: 'Sent',
+    value: props.progress.sent,
+    to: emailLogs([...SENT_STATUSES])
+  },
+  {
+    label: 'Pending',
+    value: props.progress.pending,
+    to: emailLogs(['queued', 'scheduled', 'sending'])
+  },
+  { label: 'Suppressed', value: props.progress.suppressed, to: emailLogs(['suppressed']) },
+  { label: 'Failed', value: props.progress.failed, to: emailLogs(['failed', 'rejected']) }
 ])
 </script>
 
@@ -105,7 +122,15 @@ const stats = computed(() => [
           {{ stat.label }}
         </dt>
         <dd class="tabular-nums text-highlighted">
-          {{ number(stat.value) }}
+          <ULink
+            v-if="stat.to && stat.value"
+            :to="stat.to"
+            class="text-highlighted hover:underline underline-offset-2"
+            >{{ number(stat.value) }}</ULink
+          >
+          <template v-else>
+            {{ number(stat.value) }}
+          </template>
         </dd>
       </div>
     </dl>

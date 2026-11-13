@@ -10,24 +10,38 @@ export type LogTab = z.infer<typeof logTabSchema>
 <script setup lang="ts">
 import type { TabsItem } from '@nuxt/ui'
 import type { VNode } from 'vue'
+import type { DateRangeValue } from '~/utils/logLinks'
 
 /**
- * Frame shared by the log views (DESIGN.md §4): the Logs navbar, the view tabs and the view's
- * own filter toolbar in the header; the view content in the body.
+ * Frame shared by the log views (DESIGN.md §4): the facets panel on the left (a slideover
+ * below lg), then the Logs navbar and one toolbar (view tabs · date range, filters, refresh)
+ * above the view content.
  *
- * <LogsPanel v-model:tab="tab">
- *   <template #filters>search · selects</template>
- *   <template #actions>clear filters · refresh</template>
- *   table · footer · detail slideover
+ * <LogsPanel v-model:tab="tab" v-model:range="range" :active="active" :loading="loading"
+ *   refresh-label="Refresh emails" @clear="clear" @refresh="refreshAll">
+ *   <template #facets>search · scope chips · facet groups</template>
+ *   overview · table · footer · detail slideover
  * </LogsPanel>
  */
+withDefaults(
+  defineProps<{
+    /** Number of active filters in the facets panel. */
+    active: number
+    loading?: boolean
+    refreshLabel: string
+  }>(),
+  { loading: false }
+)
+
+const emit = defineEmits<{ clear: []; refresh: [] }>()
+
 const tab = defineModel<LogTab>('tab', { required: true })
 
+const range = defineModel<DateRangeValue>('range', { required: true })
+
 defineSlots<{
-  /** Search and filters, start of the filter toolbar. */
-  filters?: () => VNode[]
-  /** "Clear filters" and refresh, end of the filter toolbar. */
-  actions?: () => VNode[]
+  /** Search, scope chips and facet groups of the view. */
+  facets?: () => VNode[]
   default?: () => VNode[]
 }>()
 
@@ -43,6 +57,8 @@ const DESCRIPTIONS: Record<LogTab, string> = {
   events: 'Delivery, bounce, complaint, open and click notifications from Amazon SES'
 }
 
+const filtersOpen = ref(false)
+
 function onTab(value: string | number) {
   const parsed = logTabSchema.safeParse(value)
 
@@ -51,6 +67,10 @@ function onTab(value: string | number) {
 </script>
 
 <template>
+  <FacetsPanel id="logs-facets" v-model:open="filtersOpen" :active="active" @clear="emit('clear')">
+    <slot name="facets" />
+  </FacetsPanel>
+
   <UDashboardPanel id="logs">
     <template #header>
       <UDashboardNavbar title="Logs">
@@ -64,25 +84,31 @@ function onTab(value: string | number) {
         </template>
       </UDashboardNavbar>
 
-      <UDashboardToolbar>
-        <UTabs
-          :model-value="tab"
-          :items="TABS"
-          :content="false"
-          size="sm"
-          aria-label="Log type"
-          @update:model-value="onTab"
-        />
-      </UDashboardToolbar>
-
-      <UDashboardToolbar
-        :ui="{ root: 'flex-wrap gap-y-2 py-2', left: 'flex-wrap', right: 'ms-auto' }"
-      >
+      <UDashboardToolbar :ui="{ root: 'flex-wrap gap-y-2 py-2', right: 'ms-auto' }">
         <template #left>
-          <slot name="filters" />
+          <UTabs
+            :model-value="tab"
+            :items="TABS"
+            :content="false"
+            size="sm"
+            aria-label="Log type"
+            @update:model-value="onTab"
+          />
         </template>
         <template #right>
-          <slot name="actions" />
+          <DateRangePicker v-model="range" any-time size="sm" />
+          <FacetsButton v-model:open="filtersOpen" :active="active" size="sm" />
+          <UTooltip text="Refresh">
+            <UButton
+              icon="i-lucide-refresh-cw"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              :aria-label="refreshLabel"
+              :loading="loading"
+              @click="emit('refresh')"
+            />
+          </UTooltip>
         </template>
       </UDashboardToolbar>
     </template>

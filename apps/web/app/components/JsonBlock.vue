@@ -1,24 +1,32 @@
 <script setup lang="ts">
-import { z } from 'zod'
-
 /**
- * Pretty-printed JSON viewer with a copy button (event payloads, audit data). Raw strings
- * (e.g. non-JSON bodies) are shown as-is.
+ * Pretty-printed, highlighted JSON viewer (event payloads, audit data). Strings holding JSON,
+ * such as an SNS `Message`, are expanded in place; other raw strings are shown as plain text.
  *
- * <JsonBlock :value="event.payload" max-height="16rem" />
+ * <JsonBlock :value="event.payload" label="Payload" />
  */
-const props = withDefaults(defineProps<{ value: unknown; maxHeight?: string; label?: string }>(), {
-  maxHeight: '24rem',
-  label: 'JSON'
-})
+const props = withDefaults(
+  defineProps<{ value: unknown; label?: string; maxHeight?: string; wrap?: boolean }>(),
+  { label: 'JSON', maxHeight: undefined, wrap: true }
+)
 
-const text = computed(() => {
-  const raw = z.string().safeParse(props.value)
+const formatter = new JsonFormatter()
 
-  return raw.success ? raw.data : JSON.stringify(props.value, null, 2)
+const formatted = computed<FormattedJson>(() => {
+  const json = jsonValueSchema.safeParse(props.value)
+
+  if (json.success) return formatter.format(json.data)
+
+  return { code: JSON.stringify(props.value, null, formatter.indent) ?? '', lang: 'json' }
 })
 </script>
 
 <template>
-  <CodeBlock :code="text" :label="label" :max-height="maxHeight" />
+  <CodeBlock
+    :code="formatted.code"
+    :label="label"
+    :lang="formatted.lang"
+    :wrap="wrap"
+    v-bind="maxHeight ? { maxHeight } : {}"
+  />
 </template>

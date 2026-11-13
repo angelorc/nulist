@@ -22,6 +22,7 @@ const id = String(route.params.id)
 const { can } = useOrganization()
 const canEdit = computed(() => can({ webhook: ['update'] }))
 const canDelete = computed(() => can({ webhook: ['delete'] }))
+const canReadAudit = computed(() => can({ audit: ['read'] }))
 const editDenied = "You don't have permission to change endpoints"
 
 const {
@@ -241,12 +242,26 @@ async function onDelete() {
   if (ok && (await remove()) !== undefined) await navigateTo('/webhooks')
 }
 
-/** The navbar's `…` menu: Delete, alone in its destructive group (DESIGN.md §5). */
-const moreItems = computed<DropdownMenuItem[][]>(() =>
-  canDelete.value
-    ? [[{ label: 'Delete endpoint', icon: 'i-lucide-trash', color: 'error', onSelect: onDelete }]]
-    : []
-)
+/** The navbar's `…` menu: history, then Delete alone in its destructive group (DESIGN.md §5). */
+const moreItems = computed<DropdownMenuItem[][]>(() => {
+  const groups: DropdownMenuItem[][] = []
+
+  if (canReadAudit.value)
+    groups.push([
+      {
+        label: 'View history',
+        icon: 'i-lucide-history',
+        to: LogLinks.audit({ entityType: 'webhook_endpoint', entityId: id })
+      }
+    ])
+
+  if (canDelete.value)
+    groups.push([
+      { label: 'Delete endpoint', icon: 'i-lucide-trash', color: 'error', onSelect: onDelete }
+    ])
+
+  return groups
+})
 
 function onRotated(secret: string) {
   if (endpoint.value) endpoint.value.secret = secret

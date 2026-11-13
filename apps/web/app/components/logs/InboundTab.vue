@@ -2,20 +2,18 @@
 import type { TableColumn, TableRow } from '@nuxt/ui'
 import { z } from 'zod'
 import type { JsonValue } from '#shared/types/domain'
-import type { InboundEventDetail, InboundEventItem, InboundEventStats } from '#shared/types/logs'
+import type {
+  InboundEventDetail,
+  InboundEventFacets,
+  InboundEventItem,
+  InboundEventStats
+} from '#shared/types/logs'
 import type { DetailRow } from './DetailList.vue'
 import type { OverviewTile } from './Overview.vue'
 import type { LogTab } from './Panel.vue'
 import { SES_EVENT_TYPES, selectedEntrySchema, snsNotificationSchema } from '#shared/schemas/logs'
 
 const tab = defineModel<LogTab>('tab', { required: true })
-
-const PERIOD_ITEMS = [
-  { label: 'Any time', value: 'all' },
-  { label: 'Last 24 hours', value: '24h' },
-  { label: 'Last 7 days', value: '7d' },
-  { label: 'Last 30 days', value: '30d' }
-]
 
 /** Icon per SES event type (`eventType` of the notification). */
 const EVENT_ICONS = new Map([
@@ -49,17 +47,17 @@ const EVENT_LABELS = new Map([
 
 const eventLabel = (type: string) => EVENT_LABELS.get(type) ?? type
 
-const EVENT_ITEMS = [
-  { label: 'All events', value: 'all' },
-  ...SES_EVENT_TYPES.map((value) => ({
-    label: eventLabel(value),
-    value,
-    icon: EVENT_ICONS.get(value)
-  }))
-]
+const SES_TYPES = new Set<string>(SES_EVENT_TYPES)
 
-/** Filter values as the selects hold them (`all` means no filter). */
-type InboundEventFilters = { eventType?: string; status?: string; period?: string }
+/** Filter values as the URL query holds them (lists comma-joined). */
+type InboundEventFilters = {
+  status?: string
+  eventType?: string
+  recipient?: string
+  period?: string
+  from?: string
+  to?: string
+}
 
 const {
   page,
@@ -74,7 +72,14 @@ const {
   isFiltered,
   clearFilters
 } = usePaginatedList<InboundEventItem, InboundEventFilters>('/api/logs/inbound', {
-  filters: { eventType: undefined, status: undefined, period: undefined }
+  filters: {
+    status: undefined,
+    eventType: undefined,
+    recipient: undefined,
+    period: undefined,
+    from: undefined,
+    to: undefined
+  }
 })
 
 const {
@@ -82,6 +87,33 @@ const {
   loading: statsLoading,
   refresh: refreshStats
 } = useLogStats<InboundEventStats>('/api/logs/inbound/stats', q, filters, ['status', 'eventType'])
+
+const {
+  facets,
+  loading: facetsLoading,
+  refresh: refreshFacets,
+  range,
+  active,
+  clear
+} = useLogFacets<InboundEventFacets>('/api/logs/inbound/facets', q, filters)
+
+const statusOptions = computed(() =>
+  facetOptions(facets.value?.facets.status, filters.status, (value) => ({
+    label: value.charAt(0).toUpperCase() + value.slice(1),
+    color: statusColor(value)
+  }))
+)
+
+const eventTypeOptions = computed(() =>
+  facetOptions(
+    facets.value?.facets.eventType.filter((bucket) => SES_TYPES.has(bucket.value)),
+    filters.eventType,
+    (value) => ({
+      label: eventLabel(value),
+      icon: EVENT_ICONS.get(value) ?? 'i-lucide-radio-tower'
+    })
+  )
+)
 
 const tiles = computed<OverviewTile[]>(() => {
   const s = stats.value
@@ -112,13 +144,10 @@ const tiles = computed<OverviewTile[]>(() => {
   ]
 })
 
-function toggleType(type: string) {
-  filters.eventType = filters.eventType === type ? undefined : type
-}
-
 function refreshAll() {
   void refresh()
   void refreshStats()
+  void refreshFacets()
 }
 
 const route = useRoute()
@@ -281,22 +310,25 @@ const detailTabs = computed(() => [
     : []),
   { label: 'Delivery', value: 'delivery', slot: 'delivery' as const }
 ])
-
-const search = useTemplateRef<{ inputRef?: HTMLInputElement | null }>('search')
-
-defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
 </script>
 
 <template>
-  <LogsPanel v-model:tab="tab">
-    <template #filters>
+  <LogsPanel
+    v-model:tab="tab"
+    v-model:range="range"
+    :active="active"
+    :loading="loading"
+    refresh-label="Refresh events"
+    @clear="clear"
+    @refresh="refreshAll"
+  >
+    <template #facets>
       <UInput
-        ref="search"
         v-model="q"
         icon="i-lucide-search"
         placeholder="Search recipient, event or message ID…"
         size="sm"
-        class="w-full sm:w-64"
+        class="w-full"
         aria-label="Search events"
       >
         <template #trailing>
@@ -311,43 +343,32 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
           />
         </template>
       </UInput>
-      <USelect
-        v-model="filters.eventType"
-        :items="EVENT_ITEMS"
-        placeholder="All events"
-        size="sm"
-        class="w-44"
-        aria-label="Filter by event type"
-      />
-      <USelect
-        v-model="filters.period"
-        :items="PERIOD_ITEMS"
-        placeholder="Any time"
-        icon="i-lucide-calendar"
-        size="sm"
-        class="w-40"
-        aria-label="Filter by time range"
-      />
-    </template>
-
-    <template #actions>
-      <UButton
-        v-if="isFiltered"
-        label="Clear filters"
-        variant="ghost"
-        size="sm"
-        @click="clearFilters"
-      />
-      <UTooltip text="Refresh">
+      <div v-if="filters.recipient">
         <UButton
-          icon="i-lucide-refresh-cw"
-          variant="ghost"
-          size="sm"
-          aria-label="Refresh events"
-          :loading="loading"
-          @click="refreshAll"
+          :label="`Recipient: ${filters.recipient}`"
+          trailing-icon="i-lucide-x"
+          color="neutral"
+          variant="outline"
+          size="xs"
+          class="max-w-full"
+          :ui="{ label: 'truncate' }"
+          :aria-label="`Remove filter Recipient: ${filters.recipient}`"
+          @click="filters.recipient = undefined"
         />
-      </UTooltip>
+      </div>
+      <FacetsGroup
+        v-model="filters.eventType"
+        title="Event type"
+        :items="eventTypeOptions"
+        :loading="facetsLoading"
+        :limit="10"
+      />
+      <FacetsGroup
+        v-model="filters.status"
+        title="Status"
+        :items="statusOptions"
+        :loading="facetsLoading"
+      />
     </template>
 
     <LogsOverview
@@ -357,25 +378,7 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
       :stats="stats"
       :loading="statsLoading"
       :series="{ ok: 'Processed', other: 'Ignored', issues: 'Failed' }"
-    >
-      <template v-if="stats?.types.length" #facets>
-        <UButton
-          v-for="t in stats.types"
-          :key="t.type"
-          size="xs"
-          variant="ghost"
-          :icon="EVENT_ICONS.get(t.type) ?? 'i-lucide-radio-tower'"
-          :active="filters.eventType === t.type"
-          active-variant="soft"
-          :aria-pressed="filters.eventType === t.type"
-          :ui="{ leadingIcon: EVENT_TONE.get(t.type) ?? 'text-muted' }"
-          @click="toggleType(t.type)"
-        >
-          {{ eventLabel(t.type) }}
-          <span class="tabular-nums text-muted">{{ t.count }}</span>
-        </UButton>
-      </template>
-    </LogsOverview>
+    />
 
     <EmptyState
       v-if="error && !items.length"
@@ -396,7 +399,7 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
       :columns="columns"
       :loading="loading"
       sticky
-      :ui="tableUi"
+      :ui="wideTableUi"
       class="shrink-0"
       @select="onSelect"
     />
@@ -494,13 +497,13 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
           :ui="{ content: 'pt-3' }"
         >
           <template #event>
-            <JsonBlock v-if="sesEvent" :value="sesEvent" label="SES event" max-height="24rem" />
+            <JsonBlock v-if="sesEvent" :value="sesEvent" label="SES event" />
             <p v-else class="text-[13px] text-muted">
               The notification does not carry an SES event.
             </p>
           </template>
           <template #raw>
-            <JsonBlock :value="detail.payload" label="Raw notification" max-height="24rem" />
+            <JsonBlock :value="detail.payload" label="Raw notification" />
           </template>
           <template #delivery>
             <LogsDetailList :rows="delivery" />
