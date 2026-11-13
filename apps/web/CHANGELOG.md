@@ -1,5 +1,17 @@
 # @nulist/web
 
+## 0.3.0
+
+### Minor Changes
+
+- [#25](https://github.com/angelorc/nulist/pull/25) [`51f7078`](https://github.com/angelorc/nulist/commit/51f7078dea59c1e3ec244da9736586749fdedb6b) Thanks [@angelorc](https://github.com/angelorc)! - Filter the SES events log by event type (Delivery, Open, Click, Bounce, Complaint and the other SES event types).
+
+### Patch Changes
+
+- [#23](https://github.com/angelorc/nulist/pull/23) [`065bfb3`](https://github.com/angelorc/nulist/commit/065bfb3a8b7579b0d5a126c4d6a3a070ef851f1b) Thanks [@angelorc](https://github.com/angelorc)! - Name new broadcasts after their subject when no name is given, falling back to "Untitled broadcast" only when the subject is empty too.
+
+- [#24](https://github.com/angelorc/nulist/pull/24) [`e7f5e15`](https://github.com/angelorc/nulist/commit/e7f5e150bdfa9b258b3611a02ecba5034ce14416) Thanks [@angelorc](https://github.com/angelorc)! - Saving a visual template with an image marked as decorative no longer reports "Attribute role is illegal": the image keeps its empty alt text, without the `role` attribute MJML does not accept on images.
+
 ## 0.2.2
 
 ### Patch Changes
