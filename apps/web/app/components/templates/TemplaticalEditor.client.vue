@@ -96,6 +96,7 @@ headerActions.className = 'templatical-actions'
 const pickers = new ColorPickerBridge()
 const pickerOpen = pickers.open
 const pickerColor = pickers.color
+const toolbars = new TextToolbarFit()
 const savedColors = useSavedColors()
 const savedColorList = savedColors.colors
 
@@ -311,6 +312,7 @@ async function mount(el: HTMLDivElement) {
   readiness.value = checker.check(instance.getContent())
   loading.value = false
   pickers.connect(el)
+  toolbars.connect(el)
   void savedColors.load()
 
   if (converted) notifyConverted(converted)
@@ -358,6 +360,7 @@ onBeforeUnmount(() => {
   clearTimeout(settleTimer)
   notify.dismiss(CONVERTED_TOAST)
   pickers.disconnect()
+  toolbars.disconnect()
   editor?.unmount()
   editor = null
 })
