@@ -69,7 +69,22 @@ export const sesDeliverySchema = z.looseObject({
 
 export const sesRejectSchema = z.looseObject({ reason: z.string().optional() })
 
-const sesBotVerdictSchema = z.union([z.boolean(), z.string()]).nullish()
+const BOT_VERDICTS = ['likely', 'true']
+const HUMAN_VERDICTS = ['unlikely', 'false']
+
+/** SES reports `Likely` / `Unlikely` (or a boolean); anything inconclusive is left to the user-agent heuristic. */
+const sesBotVerdictSchema = z
+  .union([
+    z.boolean(),
+    z
+      .string()
+      .trim()
+      .toLowerCase()
+      .pipe(z.enum([...BOT_VERDICTS, ...HUMAN_VERDICTS]))
+      .transform((verdict) => BOT_VERDICTS.includes(verdict))
+  ])
+  .optional()
+  .catch(undefined)
 
 export const sesOpenSchema = z.looseObject({
   timestamp: z.string().optional(),

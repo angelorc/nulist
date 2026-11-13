@@ -53,13 +53,6 @@ const SUPPRESSION_LIST_SUBTYPES = new Set(['Suppressed', 'OnAccountSuppressionLi
 const BOT_USER_AGENT =
   /bot|crawl|spider|slurp|preview|scanner|barracuda|mimecast|proofpoint|urldefense|safelinks|fireeye|trendmicro|python-requests|go-http-client|curl\/|wget|headless|phantomjs/i
 
-const BOT_VERDICTS = new Map([
-  ['likely', true],
-  ['true', true],
-  ['unlikely', false],
-  ['false', false]
-])
-
 const MAX_ERROR = 1_000
 
 /**
@@ -703,16 +696,9 @@ export class SesEventApplier {
     return sql<Date>`greatest(coalesce(${column}, ${iso}::timestamptz), ${iso}::timestamptz)`
   }
 
-  /** SES's own bot verdict (`Likely` / `Unlikely`, or a boolean) when conclusive, else a user-agent heuristic (no agent = bot). */
-  static isBot(
-    userAgent: string | undefined,
-    reported: boolean | string | null | undefined
-  ): boolean {
-    if (typeof reported === 'boolean') return reported
-
-    const verdict = BOT_VERDICTS.get(reported?.trim().toLowerCase() ?? '')
-
-    if (verdict !== undefined) return verdict
+  /** SES's own bot verdict when present, else a user-agent heuristic (no agent = bot). */
+  static isBot(userAgent: string | undefined, reported: boolean | undefined): boolean {
+    if (reported !== undefined) return reported
 
     if (!userAgent?.trim()) return true
 
