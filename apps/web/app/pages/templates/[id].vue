@@ -237,7 +237,7 @@ async function doSave(): Promise<boolean> {
   if (keptStoredContent) {
     notify.warning('Only the name, subject and preheader were saved', {
       description:
-        'The visual editor could not open this template. Switch to Code to edit its content.'
+        "The visual editor couldn't open this email. To change its content, switch to Code."
     })
 
     return true
@@ -324,16 +324,18 @@ async function changeMode(next: Mode) {
     const ok = await confirm(
       lost
         ? {
-            title: 'Some Liquid logic cannot move to the visual editor',
-            description: `${lost === 1 ? '1 Liquid tag wraps' : `${lost} Liquid tags wrap`} whole parts of this email, such as a loop around several sections. Blocks cannot keep it: those parts would show for every contact, or break the layout. Stay in the code editor to keep this logic.`,
+            title: "Some personalization won't come along",
+            // `lost` counts Liquid tags, not rules: no number, so it cannot mislead.
+            description:
+              "Some sections of this email are wrapped in personalization (Liquid tags). The visual editor can't fully keep it, so those sections may show to everyone or look broken. To keep it working, stay in Code.",
             confirmLabel: 'Switch anyway',
-            cancelLabel: 'Stay in code',
+            cancelLabel: 'Stay in Code',
             danger: true
           }
         : {
             title: 'Switch to the visual editor?',
             description:
-              'The visual editor turns your MJML into blocks you can drag and edit. Parts it cannot turn into blocks are kept as HTML blocks, and spacing can change a little: check the result with Preview before saving. Going back to Code without editing restores your code exactly.',
+              "Your email becomes blocks you can drag and edit. Anything that can't become a block stays as HTML, and spacing may shift a little. If you come back to Code without editing, your code stays exactly as it was.",
             confirmLabel: 'Switch to visual'
           }
     )

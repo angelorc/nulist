@@ -5,6 +5,7 @@ import { TemplateDesignEnvelope } from '#shared/schemas/template-design'
 import type { TemplaticalEditorApi } from '#shared/schemas/template-design'
 import type { TemplateDesign } from '#shared/schemas/templates'
 import { EmailDesignKit } from '#shared/templates/EmailDesignKit'
+import { EMAIL_FONTS_CONFIG } from '#shared/templates/fonts'
 import { TEMPLATE_LINT_OPTIONS } from '#shared/templates/lint'
 import type { MjmlImport } from '#shared/templates/MjmlBlockImporter'
 import type { TemplateKind } from '#shared/types/domain'
@@ -49,13 +50,13 @@ const PALETTE = [
   'html'
 ]
 
-/** Colour presets in every colour picker: neutrals, then the starters' accents and tints. */
 /** Toast id of the conversion notice, closed when the editor goes away. */
 const CONVERTED_TOAST = 'template-converted'
 
 /** Time for an undo, redo or keystroke to reach the document before it is compared. */
 const SETTLE_MS = 50
 
+/** Colour presets in every colour picker: neutrals, then the starters' accents and tints. */
 const COLOR_PRESETS = [
   '#18181b',
   '#3f3f46',
@@ -91,7 +92,15 @@ const headerActions = document.createElement('div')
 
 headerActions.className = 'templatical-actions'
 
+/** Shows the organization's saved colours inside every colour picker of the editor. */
+const pickers = new ColorPickerBridge()
+const pickerOpen = pickers.open
+const pickerColor = pickers.color
+const savedColors = useSavedColors()
+const savedColorList = savedColors.colors
+
 const notify = useNotify()
+const kbd = useKbd()
 const colorMode = useColorMode()
 const images = useTemplateImages(() => props.canUpload)
 const mergeTags = new TemplateMergeTags(props.kind)
@@ -130,32 +139,33 @@ function fingerprint(content: TemplateContent): string {
   return JSON.stringify(TemplateDesignEnvelope.wrap(content))
 }
 
-/** "1 part", "3 parts". */
-function parts(count: number): string {
-  return count === 1 ? '1 part' : `${count} parts`
+/** "1 part was", "3 parts were": the count with the singular or plural wording. */
+function counted(count: number, one: string, many: string): string {
+  return count === 1 ? `1 ${one}` : `${count} ${many}`
 }
 
-/** Says the email was rebuilt as blocks, and which parts did not become editable blocks. */
+/** Says the email is now made of blocks, and what to look at before saving it. */
 function notifyConverted({ keptAsHtml, dropped, unsupportedLogic }: MjmlImport) {
   const details = [
-    keptAsHtml ? `${parts(keptAsHtml)} kept as HTML blocks.` : '',
-    dropped ? `${parts(dropped)} could not be converted.` : '',
+    keptAsHtml ? `${counted(keptAsHtml, 'part stays', 'parts stay')} as HTML.` : '',
+    dropped ? `${counted(dropped, 'part was', 'parts were')} left out.` : '',
+    // Counted per Liquid tag, and some stay in HTML blocks: a number would mislead here.
     unsupportedLogic
-      ? `${unsupportedLogic === 1 ? '1 Liquid tag' : `${unsupportedLogic} Liquid tags`} around whole parts could not be kept: those parts would show for every contact, or break the layout.`
-      : ''
+      ? "Some personalization (Liquid) around whole sections couldn't be fully kept: some content may show to everyone or look broken."
+      : '',
+    'Spacing may shift a little, so check it in Preview before saving.'
   ]
 
   const options = {
     id: CONVERTED_TOAST,
-    description:
-      `${details.filter(Boolean).join(' ')} Spacing and styles can differ a little: check it with Preview before saving.`.trim(),
+    description: details.filter(Boolean).join(' '),
     duration: 0
   }
 
   if (unsupportedLogic || dropped) {
-    notify.warning('This email was converted into blocks', options)
+    notify.warning('Some parts of your email changed', options)
   } else {
-    notify.info('This email was converted into blocks', options)
+    notify.info('Your email is ready to edit', options)
   }
 }
 
@@ -216,8 +226,8 @@ function fix(item: ReadinessItem) {
   checksOpen.value = false
 
   if (!id) {
-    notify.error('Could not add it', undefined, {
-      description: 'Switch off Preview, then try again.'
+    notify.error("Couldn't add it", undefined, {
+      description: 'Turn off Preview and try again.'
     })
 
     return
@@ -228,12 +238,13 @@ function fix(item: ReadinessItem) {
   refresh(content)
 
   if (content.blocks.at(-1)?.id === id) {
+    // The editor has no Undo button: undo is its keyboard shortcut.
     notify.success(action.done, {
-      description: 'It is at the bottom of the email. Undo removes it.'
+      description: `It's at the end of the email. Press ${kbd.macOS.value ? '⌘Z' : 'Ctrl+Z'} to remove it.`
     })
   } else {
     notify.warning(`${action.done} below the selected block`, {
-      description: 'Drag it to the bottom of the email, where people look for it.',
+      description: 'Drag it to the end of the email, where readers expect it.',
       duration: 0
     })
   }
@@ -259,6 +270,7 @@ async function mount(el: HTMLDivElement) {
     paletteBlocks: PALETTE,
     htmlBlockPreview: true,
     colors: { presets: COLOR_PRESETS },
+    fonts: EMAIL_FONTS_CONFIG,
     blockDefaults: {
       button: {
         backgroundColor: '#18181b',
@@ -284,7 +296,7 @@ async function mount(el: HTMLDivElement) {
     header: { actions: headerActions },
     onChange: (next) => refresh(next),
     onError: (error) => {
-      if (!unmounted) notify.error('The editor ran into a problem', error)
+      if (!unmounted) notify.error('Something went wrong in the editor', error)
     }
   })
 
@@ -298,6 +310,8 @@ async function mount(el: HTMLDivElement) {
   baseline = fingerprint(instance.getContent())
   readiness.value = checker.check(instance.getContent())
   loading.value = false
+  pickers.connect(el)
+  void savedColors.load()
 
   if (converted) notifyConverted(converted)
 
@@ -343,6 +357,7 @@ onBeforeUnmount(() => {
   unmounted = true
   clearTimeout(settleTimer)
   notify.dismiss(CONVERTED_TOAST)
+  pickers.disconnect()
   editor?.unmount()
   editor = null
 })
@@ -350,6 +365,17 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex flex-col min-h-0 min-w-0">
+    <Teleport :to="pickers.target">
+      <TemplatesSavedColors
+        v-if="pickerOpen"
+        :colors="savedColorList"
+        :current="pickerColor"
+        :limit="savedColors.limit"
+        @apply="pickers.apply($event)"
+        @toggle="savedColors.toggle($event)"
+      />
+    </Teleport>
+
     <Teleport :to="headerActions">
       <UPopover v-if="readiness.length" v-model:open="checksOpen">
         <UButton
@@ -409,8 +435,8 @@ onBeforeUnmount(() => {
           color="error"
           variant="subtle"
           icon="i-lucide-circle-x"
-          title="The editor could not open this template"
-          :description="`${failed} Switch to Code to edit the MJML directly.`"
+          title="The visual editor couldn't open this email"
+          :description="`${failed} You can still edit it in Code.`"
           class="max-w-md"
         />
       </div>

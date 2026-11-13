@@ -354,6 +354,17 @@ export const templates = pgTable(
   ]
 )
 
+/** Colours the organization saved from the visual editor's colour picker (`#rrggbb`). */
+export const savedColors = pgTable(
+  'saved_colors',
+  {
+    organizationId: organizationId(),
+    color: text('color').notNull(),
+    createdAt: createdAt()
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.color] })]
+)
+
 export const files = pgTable(
   'files',
   {

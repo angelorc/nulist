@@ -109,8 +109,8 @@ export class TemplateReadiness {
         level: 'problem',
         title: 'Add an unsubscribe link',
         description: hasFooter
-          ? 'Marketing email must let people unsubscribe in one click, and your footer has no unsubscribe link. Add it here, or select a word such as "Unsubscribe", click Link and choose the "Unsubscribe link" variable as the address.'
-          : 'Marketing email must let people unsubscribe in one click. Add the footer, or select a word such as "Unsubscribe", click Link and choose the "Unsubscribe link" variable as the address.',
+          ? 'Marketing emails need a one-click unsubscribe link, and your footer has none. Add it here, or select a word like "Unsubscribe", click Link and pick the "Unsubscribe link" variable.'
+          : 'Marketing emails need a one-click unsubscribe link. Add the footer, or select a word like "Unsubscribe", click Link and pick the "Unsubscribe link" variable.',
         fix: hasFooter ? 'add-unsubscribe-link' : 'add-footer'
       })
     }

@@ -9,10 +9,15 @@ import { lintTemplate } from '@templatical/quality'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { TEMPLATE_LINT_OPTIONS } from '../shared/templates/lint'
 import { MjmlBlockImporter } from '../shared/templates/MjmlBlockImporter'
+import { broadcastCreateSchema } from '../shared/schemas/broadcasts'
+import { savedColorSchema } from '../shared/schemas/saved-colors'
 import { TemplateDesignEnvelope } from '../shared/schemas/template-design'
 import { templateCreateSchema, templateDesignSchema } from '../shared/schemas/templates'
 import type { TemplateStarter } from '../shared/schemas/templates'
 import type { TemplateKind } from '../shared/types/domain'
+import { ConflictError } from '../server/lib/core/errors'
+import { TenantScope } from '../server/lib/core/TenantScope'
+import { SavedColorService } from '../server/lib/templates/SavedColorService'
 import { StarterCatalog } from '../server/lib/templates/starters/StarterCatalog'
 import { TestPlatform } from './support/platform'
 import type { TestOrganization } from './support/platform'
@@ -248,6 +253,69 @@ describe('visual templates', () => {
     expect(preview.issues).toEqual([])
     expect(preview.html).toContain('Alex')
   })
+
+  it('load the Geist web font only in emails that use it, with a fallback for other clients', async () => {
+    const template = await visualTemplate('Geist font', 'marketing', 'blank')
+
+    const save = (content: TemplateContent) =>
+      org.services.templates.update(
+        template.id,
+        { design: TemplateDesignEnvelope.wrap(content) },
+        org.actor
+      )
+
+    const plain = designOf([createParagraphBlock({ content: '<p>Plain text</p>' })])
+
+    // The text toolbar sets a font on the selected words only.
+    const words = designOf([
+      createParagraphBlock({
+        content: '<p><span style="font-family: Geist">Geist words</span></p>'
+      })
+    ])
+
+    const withoutGeist = await save(plain)
+
+    const wholeEmail = await save({
+      ...plain,
+      settings: { ...plain.settings, fontFamily: 'Geist' }
+    })
+
+    const selectedWords = await save(words)
+
+    expect(withoutGeist.html).not.toContain('family=Geist')
+
+    for (const saved of [wholeEmail, selectedWords]) {
+      expect(saved.html).toContain('https://fonts.googleapis.com/css2?family=Geist')
+      expect(saved.html).toMatch(/font-family:\s*["']?Geist["']?, Arial, Helvetica, sans-serif/)
+    }
+  })
+
+  it('tag the links people click with UTM, but not the web font stylesheet', async () => {
+    const template = await visualTemplate('UTM font', 'marketing', 'blank')
+    const content = designOf([createButtonBlock({ text: 'Shop', url: 'https://example.com/shop' })])
+    const geist = { ...content, settings: { ...content.settings, fontFamily: 'Geist' } }
+
+    await org.services.templates.update(
+      template.id,
+      { design: TemplateDesignEnvelope.wrap(geist) },
+      org.actor
+    )
+
+    const broadcast = await org.services.broadcasts.create(
+      broadcastCreateSchema.parse({
+        name: 'Spring sale',
+        templateId: template.id,
+        utm: { enabled: true }
+      }),
+      org.actor
+    )
+
+    const { html } = await org.services.broadcasts.preview(broadcast.id)
+
+    expect(html).toContain('href="https://example.com/shop?utm_source=')
+    expect(html).toMatch(/href="https:\/\/fonts\.googleapis\.com\/css2\?family=Geist[^"]*swap"/)
+    expect(html).not.toMatch(/fonts\.googleapis\.com[^"]*utm_/)
+  })
 })
 
 /** Older starters set text defaults in the head; Liquid sits around and inside elements. */
@@ -353,5 +421,46 @@ describe('MJML opened in the visual editor', () => {
     expect(branches.unsupportedLogic).toBe(3)
     expect(legacy.unsupportedLogic).toBeGreaterThan(0)
     expect(commented.unsupportedLogic).toBe(0)
+  })
+})
+
+describe('saved colors', () => {
+  const save = (color: string) => org.services.savedColors.add(savedColorSchema.parse(color))
+
+  it('keep each colour once, in the order saved, apart from other organizations', async () => {
+    const other = await platform.organization('Other Studio')
+
+    await save('#4F46E5')
+    await save('0f766e')
+    await save('#abc')
+
+    expect(await save('#4f46e5')).toEqual(['#4f46e5', '#0f766e', '#aabbcc'])
+    expect(await other.services.savedColors.list()).toEqual([])
+    expect(await org.services.savedColors.remove('#4f46e5')).toEqual(['#0f766e', '#aabbcc'])
+
+    for (const invalid of ['red', 'transparent', '#12345', '#4f46e5cc']) {
+      expect(savedColorSchema.safeParse(invalid).success).toBe(false)
+    }
+  })
+
+  it('stop at the limit, even when members save at the same time', async () => {
+    const studio = await platform.organization('Busy Studio')
+    const colors = new SavedColorService(new TenantScope(studio.id), platform.db, 3)
+
+    const results = await Promise.allSettled(
+      ['#111111', '#222222', '#333333', '#444444', '#555555'].map((color) => colors.add(color))
+    )
+
+    const refused = results.flatMap((result) =>
+      result.status === 'rejected' ? [result.reason] : []
+    )
+
+    const saved = await colors.list()
+
+    expect(saved).toHaveLength(3)
+    expect(refused).toHaveLength(2)
+    expect(refused.every((reason) => reason instanceof ConflictError)).toBe(true)
+    // Saving one of them again is not a new colour.
+    expect(await colors.add(saved[0] ?? '')).toEqual(saved)
   })
 })

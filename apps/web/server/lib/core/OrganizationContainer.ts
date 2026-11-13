@@ -48,6 +48,7 @@ import { ApiKeyService } from '../settings/api-keys/ApiKeyService'
 import { SettingsDiagnostics } from '../settings/SettingsDiagnostics'
 import { SettingsService } from '../settings/SettingsService'
 import { FileService } from '../storage/FileService'
+import { SavedColorService } from '../templates/SavedColorService'
 import { TemplatePreviewer } from '../templates/TemplatePreviewer'
 import type { TemplateRenderer } from '../templates/TemplateRenderer'
 import { TemplateDesignRenderer } from '../templates/TemplateDesignRenderer'
@@ -110,6 +111,7 @@ export class OrganizationContainer {
   private designRendererInstance?: TemplateDesignRenderer
   private starterCatalogInstance?: StarterCatalog
   private starterGalleryInstance?: StarterGallery
+  private savedColorsInstance?: SavedColorService
   private filesInstance?: FileService
   private broadcastsInstance?: BroadcastService
   private transactionalInstance?: TransactionalService
@@ -330,6 +332,10 @@ export class OrganizationContainer {
       this.renderer,
       this.templatePreviewer
     ))
+  }
+
+  get savedColors(): SavedColorService {
+    return (this.savedColorsInstance ??= new SavedColorService(this.scope, this.db))
   }
 
   get files(): FileService {

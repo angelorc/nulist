@@ -185,7 +185,7 @@ export class TemplateRenderer {
 
   /** Static checks used by pre-flight checklists. */
   inspect(html: string) {
-    const links = [...html.matchAll(/href="([^"]*)"/g)].map((m) => m[1] ?? '')
+    const links = [...html.matchAll(LINK_HREF)].map((m) => m[2] ?? '')
 
     return {
       hasUnsubscribeLink:
@@ -236,8 +236,13 @@ export function injectPreheader(html: string, preheader: string): string {
   return /<body[^>]*>/i.test(html) ? html.replace(/<body[^>]*>/i, (m) => m + hidden) : hidden + html
 }
 
+/** The `href` of a link people click (`<a>`), not of a stylesheet such as a web font's `<link>`. */
+const LINK_HREF = /(<a\b[^>]*?\bhref=")([^"]*)"/gi
+
 export function applyUtm(html: string, utm: UtmSettings, ownUrlPrefix?: string): string {
-  return html.replace(/href="(https?:\/\/[^"]+)"/gi, (match, raw: string) => {
+  return html.replace(LINK_HREF, (match, opening: string, raw: string) => {
+    if (!/^https?:\/\//i.test(raw)) return match
+
     const decoded = raw.replace(/&amp;/g, '&')
 
     if (ownUrlPrefix && decoded.startsWith(ownUrlPrefix)) return match
@@ -255,7 +260,7 @@ export function applyUtm(html: string, utm: UtmSettings, ownUrlPrefix?: string):
         if (value && !url.searchParams.has(key)) url.searchParams.set(key, value)
       }
 
-      return `href="${url.toString().replace(/&/g, '&amp;')}"`
+      return `${opening}${url.toString().replace(/&/g, '&amp;')}"`
     } catch {
       return match
     }
