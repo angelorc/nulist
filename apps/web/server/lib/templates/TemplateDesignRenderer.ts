@@ -6,6 +6,8 @@ import { EMAIL_FONT_FALLBACK, EMAIL_FONTS } from '../../../shared/templates/font
 import { ValidationError } from '../core/errors'
 
 /** A `font-family` declaration inside an inline `style="…"` attribute (quotes may be entities). */
+const IMAGE_ROLE = /(<mj-image\b[^>]*?)\s+role="presentation"/g
+
 const INLINE_FONT = /(\bstyle="[^"]*?\bfont-family:\s*)((?:&[\da-z#]+;|[^&;"])+)/gi
 
 /**
@@ -37,7 +39,7 @@ export class TemplateDesignRenderer {
       )
     }
 
-    return this.withFontFallbacks(mjml)
+    return this.withFontFallbacks(mjml.replace(IMAGE_ROLE, '$1'))
   }
 
   /**
