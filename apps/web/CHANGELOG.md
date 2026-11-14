@@ -1,5 +1,13 @@
 # @nulist/web
 
+## 0.4.0
+
+### Minor Changes
+
+- [#27](https://github.com/angelorc/nulist/pull/27) [`5d26fd0`](https://github.com/angelorc/nulist/commit/5d26fd0a61e85be406abe3e06fd3398c76fab955) Thanks [@angelorc](https://github.com/angelorc)! - Logs and the audit log filter through a facet sidebar with live counts per value, and every time-based view (logs, audit log, dashboard) has a date range picker with presets and custom ranges. Numbers across contacts, lists, segments, broadcasts, transactional, API keys, suppressions and webhooks link to the matching logs. Code and JSON blocks gain syntax highlighting, line wrapping, an expanded view and tidier scrolling.
+
+- [#27](https://github.com/angelorc/nulist/pull/27) [`5d26fd0`](https://github.com/angelorc/nulist/commit/5d26fd0a61e85be406abe3e06fd3398c76fab955) Thanks [@angelorc](https://github.com/angelorc)! - Logs, SES events and the audit log are easier to read. Each log view opens with clickable outcome counts and a volume chart, SES events show the recipient, the email and what happened instead of raw SNS IDs, and the audit log reads as a feed grouped by day with actor and time range filters. The dashboard gains pipeline health, delivery issues and recent activity widgets.
+
 ## 0.3.0
 
 ### Minor Changes
