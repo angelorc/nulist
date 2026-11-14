@@ -1,6 +1,6 @@
 {
   "name": "nulist",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Self-hosted email platform for newsletters and transactional mail. Contacts, lists, broadcasts and a REST API on your own SES or SMTP",
   "license": "MIT",
