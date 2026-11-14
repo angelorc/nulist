@@ -85,6 +85,7 @@ const { organization, can } = useOrganization()
 const canUpdate = computed(() => can({ settings: ['update'] }))
 const canReadWebhooks = computed(() => can({ webhook: ['read'] }))
 const canReadDomains = computed(() => can({ domain: ['read'] }))
+const canReadLogs = computed(() => can({ log: ['read'] }))
 
 function senderPreview(name: string, email: string) {
   if (!email) return 'Not set'
@@ -510,6 +511,12 @@ async function onSendTest(event: FormSubmitEvent<TestEmailInput>) {
               <span class="inline-flex flex-wrap items-center gap-x-1.5">
                 Message ID
                 <CopyText :value="lastTest.messageId" />
+                <ULink
+                  v-if="canReadLogs"
+                  :to="LogLinks.emails({ id: lastTest.messageId })"
+                  class="font-medium text-inherit underline underline-offset-2"
+                  >View in Logs</ULink
+                >
               </span>
             </template>
           </UAlert>

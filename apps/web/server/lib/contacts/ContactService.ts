@@ -271,7 +271,7 @@ export class ContactService {
         .select({
           messages: sql<number>`count(*)::int`,
           delivered: sql<number>`count(${messages.deliveredAt})::int`,
-          opened: sql<number>`count(${messages.openedAt})::int`,
+          opened: sql<number>`(count(*) filter (where ${messages.openedAt} is not null or ${messages.clickedAt} is not null))::int`,
           clicked: sql<number>`count(${messages.clickedAt})::int`,
           bounced: sql<number>`(count(*) filter (where ${messages.status} = 'bounced'))::int`
         })

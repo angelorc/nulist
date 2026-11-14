@@ -54,7 +54,7 @@ const sourceLabel = computed(() => {
           <template v-if="canReadSuppressions">
             Manage in
             <ULink
-              to="/settings/suppressions"
+              :to="{ path: '/settings/suppressions', query: { q: contact.email } }"
               class="font-medium text-inherit underline underline-offset-2"
               >Settings → Suppressions</ULink
             >.

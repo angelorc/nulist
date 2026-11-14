@@ -10,7 +10,7 @@ import type { DeliveryResult } from '../server/lib/transactional/TransactionalSe
 import { WebhookService } from '../server/lib/webhooks/WebhookService'
 import { API_KEY_SCOPES } from '../shared/auth/permissions'
 import { broadcastCreateSchema } from '../shared/schemas/broadcasts'
-import { inboundEventQuerySchema } from '../shared/schemas/logs'
+import { emailLogQuerySchema, inboundEventQuerySchema } from '../shared/schemas/logs'
 import { transactionalEmailSchema } from '../shared/schemas/transactional'
 import type { TransactionalEmailInput } from '../shared/schemas/transactional'
 import type { ContactStatus, JsonObject, SuppressionReason } from '../shared/types/domain'
@@ -230,6 +230,46 @@ describe('SES events', () => {
 
     expect(opens.total).toBe(2)
     expect(opens.items.map((event) => event.eventType)).toEqual(['Open', 'Open'])
+  })
+
+  it('explains each event in the log and counts emails by outcome', async () => {
+    const org = await platform.organization('Log overview')
+    const bounced = 'gone@example.test'
+    await org.contact({ email: bounced })
+    await org.contact({ email: 'fine@example.test' })
+    const sent = await org.deliverEmail(bounced)
+    await org.deliverEmail('fine@example.test')
+
+    await platform.container.sesEvents.handle(
+      sesNotification(org, sent, 'Bounce', {
+        bounce: {
+          bounceType: 'Permanent',
+          bounceSubType: 'General',
+          bouncedRecipients: [{ emailAddress: bounced, diagnosticCode: 'smtp; 550 5.1.1' }]
+        }
+      })
+    )
+
+    const [event] = (
+      await org.services.logs.inboundEvents(inboundEventQuerySchema.parse({ eventType: 'Bounce' }))
+    ).items
+
+    expect(event).toMatchObject({
+      detail: 'Hard bounce · General — smtp; 550 5.1.1',
+      message: { id: sent.messageId }
+    })
+
+    const stats = await org.services.logs.emailStats(emailLogQuerySchema.parse({}))
+
+    expect(stats).toMatchObject({ total: 2, facets: { delivered: 1, issues: 1 } })
+    expect(stats.volume.reduce((sum, point) => sum + point.ok + point.issues, 0)).toBe(2)
+
+    const issues = await org.services.logs.emails(emailLogQuerySchema.parse({ outcome: 'issues' }))
+
+    expect(issues.items.map((item) => item.toEmail)).toEqual([bounced])
+    expect((await org.services.logs.inboundStats(inboundEventQuerySchema.parse({}))).types).toEqual(
+      [{ type: 'Bounce', count: 1 }]
+    )
   })
 })
 

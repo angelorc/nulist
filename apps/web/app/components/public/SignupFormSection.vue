@@ -110,7 +110,7 @@ const snippet = computed(() => {
       </template>
 
       <p class="text-[13px] font-medium text-highlighted">Embed code</p>
-      <CodeBlock :code="snippet" label="Embed code" max-height="16rem" />
+      <CodeBlock :code="snippet" label="Embed code" lang="html" />
       <p class="text-xs text-muted text-pretty">
         Plain HTML, no script: style it with your site's CSS. Visitors land on the hosted
         confirmation page after submitting. Signups are limited to 5 per minute per visitor.

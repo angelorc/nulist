@@ -13,6 +13,9 @@ const NO_PERMISSION = "You don't have permission to create API keys"
 const { organization, can } = useOrganization()
 const canCreate = computed(() => can({ apiKey: ['create'] }))
 const canRevoke = computed(() => can({ apiKey: ['delete'] }))
+const canReadLogs = computed(() => can({ log: ['read'] }))
+const canReadAudit = computed(() => can({ audit: ['read'] }))
+const hasRowActions = computed(() => canRevoke.value || canReadLogs.value || canReadAudit.value)
 
 const {
   data: keys,
@@ -69,20 +72,38 @@ const scopeLabel = (scope: ApiKeySummary['scope']) =>
 const isExpired = (key: ApiKeySummary) =>
   !!key.expiresAt && new Date(key.expiresAt).getTime() <= Date.now()
 
-/** Row menu: revoking, in its own destructive group. */
+/** Row menu: its requests and history, then revoking in its own destructive group. */
 function rowActions(key: ApiKeySummary): DropdownMenuItem[][] {
-  return canRevoke.value
-    ? [
-        [
-          {
-            label: 'Revoke key',
-            icon: 'i-lucide-trash',
-            color: 'error',
-            onSelect: () => onRevoke(key)
-          }
-        ]
-      ]
-    : []
+  const groups: DropdownMenuItem[][] = []
+  const history: DropdownMenuItem[] = []
+
+  if (canReadLogs.value)
+    history.push({
+      label: 'View requests',
+      icon: 'i-lucide-scroll-text',
+      to: LogLinks.api({ apiKeyId: key.id })
+    })
+
+  if (canReadAudit.value)
+    history.push({
+      label: 'View history',
+      icon: 'i-lucide-history',
+      to: LogLinks.audit({ entityType: 'api_key', entityId: key.id })
+    })
+
+  if (history.length) groups.push(history)
+
+  if (canRevoke.value)
+    groups.push([
+      {
+        label: 'Revoke key',
+        icon: 'i-lucide-trash',
+        color: 'error',
+        onSelect: () => onRevoke(key)
+      }
+    ])
+
+  return groups
 }
 
 const UBadge = resolveComponent('UBadge')
@@ -161,7 +182,7 @@ const columns = computed<TableColumn<ApiKeySummary>[]>(() => [
           : null
       ])
   },
-  ...(canRevoke.value
+  ...(hasRowActions.value
     ? [rowActionsColumn({ items: rowActions, label: (key) => `Actions for ${key.name || 'key'}` })]
     : [])
 ])
@@ -241,7 +262,7 @@ const quickstart = computed(() =>
     title="Quickstart"
     description="Send the key as a bearer token. Sending only keys can call the transactional email endpoints; full access keys can call every endpoint."
   >
-    <CodeBlock :code="quickstart" label="cURL example" max-height="10rem" />
+    <CodeBlock :code="quickstart" label="cURL example" lang="shell" />
     <p class="text-[13px] text-muted">
       Keep keys on the server. Requests count against the per-key limit in
       <ULink to="/settings/limits" class="font-medium text-primary">Limits</ULink>.

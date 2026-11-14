@@ -55,7 +55,8 @@ export interface OnboardingStatus {
 }
 
 export interface DashboardOverview {
-  range: AnalyticsRange
+  /** The preset, or `custom` for a `from`/`to` range. */
+  range: AnalyticsRange | 'custom'
   /** Current period bounds (ISO), previous period ends where this one starts. */
   period: { start: string; end: string; previousStart: string; days: number }
   /** Keys: sent, delivery_rate, open_rate, click_rate, bounce_rate, complaint_rate, unsubscribes. */

@@ -5,6 +5,9 @@ import type { ContactActivityItem, ContactActivityType } from '#shared/types/con
 /** Vertical timeline of a contact's events, newest first (DESIGN.md §7). */
 const props = defineProps<{ items: ContactActivityItem[] }>()
 
+const { can } = useOrganization()
+const canReadLogs = computed(() => can({ log: ['read'] }))
+
 interface Presentation {
   icon: string
   label: (item: ContactActivityItem) => string
@@ -84,6 +87,10 @@ const timeline = computed<ActivityTimelineItem[]>(() =>
   })
 )
 
+function messageLink(item: ContactActivityItem) {
+  return canReadLogs.value && item.messageId ? LogLinks.emails({ id: item.messageId }) : undefined
+}
+
 function isLink(detail: string | null | undefined): detail is string {
   return !!detail && /^https?:\/\//.test(detail)
 }
@@ -105,6 +112,17 @@ function hasDetails(item: ContactActivityItem): boolean {
       description: 'text-[13px] space-y-1 mt-0.5'
     }"
   >
+    <template #title="{ item }">
+      <ULink
+        v-if="messageLink(item.activity)"
+        :to="messageLink(item.activity)"
+        class="text-highlighted hover:underline underline-offset-2"
+        >{{ item.title }}</ULink
+      >
+      <template v-else>
+        {{ item.title }}
+      </template>
+    </template>
     <template #date="{ item }">
       <TimeAgo :date="item.activity.at" />
     </template>

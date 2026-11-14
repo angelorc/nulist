@@ -1,13 +1,18 @@
-import { and, count, desc, eq, ilike, isNull, or } from 'drizzle-orm'
+import { and, count, desc, eq, gte, ilike, inArray, isNull, lt, or } from 'drizzle-orm'
+import type { SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Database, Executor } from '../../db/client'
 import { auditLogs } from '../../db/schema'
 import type { JsonObject, JsonValue } from '../../../shared/types/domain'
+import type { auditQuerySchema } from '../../../shared/schemas/logs'
+import type { AuditFacetKey, AuditFacets } from '../../../shared/types/logs'
 import type { Actor } from '../core/actor'
 import { toJsonObject } from '../core/json'
 import { Page } from '../core/pagination'
 import { containsPattern } from '../core/sql'
 import type { TenantScope } from '../core/TenantScope'
+import { FacetCounter } from '../logs/FacetCounter'
+import { LogWindow } from '../logs/LogWindow'
 
 /**
  * One audit entry. `changes` is any JSON-serializable object: it is stored as
@@ -21,13 +26,9 @@ export interface AuditEntry<C extends object = JsonObject> {
   changes?: C | null
 }
 
-export interface AuditQuery {
-  page: number
-  pageSize: number
-  q?: string
-  entityType?: string
-  entityId?: string
-}
+export type AuditQuery = z.infer<typeof auditQuerySchema>
+
+const HIGH_CARDINALITY_LIMIT = 20
 
 export interface AuditFieldChange {
   from: JsonValue
@@ -94,14 +95,18 @@ export class AuditLogger {
     return changes
   }
 
-  async list(query: AuditQuery) {
-    const page = Page.from(query)
+  private filters(query: Omit<AuditQuery, 'page' | 'pageSize'>): SQL | undefined {
+    const { from, to } = LogWindow.bounds(query)
 
     // Without a scope only instance-level entries are listed, never another organization's.
-    const filters = and(
+    return and(
       this.scope ? this.scope.eq(auditLogs.organizationId) : isNull(auditLogs.organizationId),
-      query.entityType ? eq(auditLogs.entityType, query.entityType) : undefined,
+      query.entityType ? inArray(auditLogs.entityType, query.entityType) : undefined,
       query.entityId ? eq(auditLogs.entityId, query.entityId) : undefined,
+      query.actorType ? inArray(auditLogs.actorType, query.actorType) : undefined,
+      query.action ? inArray(auditLogs.action, query.action) : undefined,
+      from ? gte(auditLogs.createdAt, from) : undefined,
+      to ? lt(auditLogs.createdAt, to) : undefined,
       query.q
         ? or(
             ilike(auditLogs.summary, containsPattern(query.q)),
@@ -110,6 +115,11 @@ export class AuditLogger {
           )
         : undefined
     )
+  }
+
+  async list(query: AuditQuery) {
+    const page = Page.from(query)
+    const filters = this.filters(query)
 
     const [items, [total]] = await Promise.all([
       this.db
@@ -123,5 +133,22 @@ export class AuditLogger {
     ])
 
     return page.wrap(items, total?.value ?? 0)
+  }
+
+  async facets(query: AuditQuery): Promise<AuditFacets> {
+    const facets = new FacetCounter<AuditFacetKey>(
+      this.db,
+      auditLogs,
+      (key) => this.filters({ ...query, [key]: undefined }),
+      query
+    )
+
+    const [actorType, entityType, action] = await Promise.all([
+      facets.count('actorType', { value: auditLogs.actorType }),
+      facets.count('entityType', { value: auditLogs.entityType, limit: HIGH_CARDINALITY_LIMIT }),
+      facets.count('action', { value: auditLogs.action, limit: HIGH_CARDINALITY_LIMIT })
+    ])
+
+    return { facets: { actorType, entityType, action } }
   }
 }

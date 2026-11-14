@@ -25,6 +25,7 @@ const canImport = computed(() => can({ contact: ['import'] }))
 const canExport = computed(() => can({ contact: ['export'] }))
 const canUpdate = computed(() => can(CONTACT_BULK_PERMISSIONS.add_to_list))
 const canDelete = computed(() => can(CONTACT_BULK_PERMISSIONS.delete))
+const canReadLogs = computed(() => can({ log: ['read'] }))
 
 /** Row selection is only useful with at least one bulk action. */
 const canSelect = computed(() => canUpdate.value || canDelete.value || canExport.value)
@@ -256,6 +257,13 @@ function rowActions(contact: ContactListItem): DropdownMenuItem[][] {
   const navigation: DropdownMenuItem[] = [
     { label: 'View contact', icon: 'i-lucide-user', to: `/contacts/${contact.id}` }
   ]
+
+  if (canReadLogs.value)
+    navigation.push({
+      label: 'View emails',
+      icon: 'i-lucide-scroll-text',
+      to: LogLinks.emails({ contactId: contact.id })
+    })
 
   const changes: DropdownMenuItem[] = []
 

@@ -1,52 +1,53 @@
 <script setup lang="ts">
 import type { TableColumn, TableRow } from '@nuxt/ui'
 import type { MessageKind } from '#shared/types/domain'
-import type { EmailLogDetail, EmailLogItem } from '#shared/types/logs'
+import type {
+  EmailEngagement,
+  EmailLogDetail,
+  EmailLogFacets,
+  EmailLogItem,
+  EmailLogStats
+} from '#shared/types/logs'
+import type { FacetOption } from '../facets/Group.vue'
+import type { OverviewTile } from './Overview.vue'
 import type { LogTab } from './Panel.vue'
 import { selectedEntrySchema } from '#shared/schemas/logs'
 
 const tab = defineModel<LogTab>('tab', { required: true })
 
-const STATUS_ITEMS = [
-  { label: 'All statuses', value: 'all' },
-  { label: 'Delivered', value: 'delivered' },
-  { label: 'Sent', value: 'sent' },
-  { label: 'Queued', value: 'queued' },
-  { label: 'Scheduled', value: 'scheduled' },
-  { label: 'Delayed', value: 'delayed' },
-  { label: 'Bounced', value: 'bounced' },
-  { label: 'Complained', value: 'complained' },
-  { label: 'Failed', value: 'failed' },
-  { label: 'Rejected', value: 'rejected' },
-  { label: 'Suppressed', value: 'suppressed' },
-  { label: 'Cancelled', value: 'cancelled' }
-]
+const KIND_LABELS = new Map<string, string>([
+  ['broadcast', 'Broadcast'],
+  ['transactional', 'Transactional'],
+  ['system', 'System']
+] satisfies [MessageKind, string][])
 
-const KIND_LABELS: Record<MessageKind, string> = {
-  broadcast: 'Broadcast',
-  transactional: 'Transactional',
-  system: 'System'
-}
+const ENGAGEMENTS = new Map<string, Pick<FacetOption, 'label' | 'icon' | 'description'>>([
+  [
+    'clicked',
+    { label: 'Clicked', icon: 'i-lucide-mouse-pointer-click', description: 'Clicked a link' }
+  ],
+  [
+    'opened',
+    { label: 'Opened, no click', icon: 'i-lucide-eye', description: 'Opened without a click' }
+  ],
+  ['none', { label: 'Not opened', icon: 'i-lucide-eye-off', description: 'No open or click' }]
+] satisfies [EmailEngagement, Pick<FacetOption, 'label' | 'icon' | 'description'>][])
 
-const KIND_ITEMS = [
-  { label: 'All kinds', value: 'all' },
-  ...Object.entries(KIND_LABELS).map(([value, label]) => ({ label, value }))
-]
+const sentenceCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
 
-const PERIOD_ITEMS = [
-  { label: 'Any time', value: 'all' },
-  { label: 'Last 24 hours', value: '24h' },
-  { label: 'Last 7 days', value: '7d' },
-  { label: 'Last 30 days', value: '30d' },
-  { label: 'Last 90 days', value: '90d' }
-]
-
-/** Filter values as the selects hold them (`all` means no filter). */
+/** Filter values as the URL query holds them (lists comma-joined). */
 type EmailLogFilters = {
+  outcome?: string
   status?: string
   kind?: string
-  period?: string
+  engagement?: string
   broadcastId?: string
+  contactId?: string
+  templateId?: string
+  recipient?: string
+  period?: string
+  from?: string
+  to?: string
 }
 
 const {
@@ -62,8 +63,159 @@ const {
   isFiltered,
   clearFilters
 } = usePaginatedList<EmailLogItem, EmailLogFilters>('/api/logs/emails', {
-  filters: { status: undefined, kind: undefined, period: undefined, broadcastId: undefined }
+  filters: {
+    outcome: undefined,
+    status: undefined,
+    kind: undefined,
+    engagement: undefined,
+    broadcastId: undefined,
+    contactId: undefined,
+    templateId: undefined,
+    recipient: undefined,
+    period: undefined,
+    from: undefined,
+    to: undefined
+  }
 })
+
+const {
+  stats,
+  loading: statsLoading,
+  refresh: refreshStats
+} = useLogStats<EmailLogStats>('/api/logs/emails/stats', q, filters, ['outcome', 'status'])
+
+const {
+  facets,
+  loading: facetsLoading,
+  refresh: refreshFacets,
+  range,
+  active,
+  clear
+} = useLogFacets<EmailLogFacets>('/api/logs/emails/facets', q, filters)
+
+const statusOptions = computed(() =>
+  facetOptions(facets.value?.facets.status, filters.status, (value) => ({
+    label: sentenceCase(value),
+    color: statusColor(value)
+  }))
+)
+
+const kindOptions = computed(() =>
+  facetOptions(facets.value?.facets.kind, filters.kind, (value) => ({
+    label: KIND_LABELS.get(value) ?? sentenceCase(value)
+  }))
+)
+
+const engagementOptions = computed(() =>
+  facetOptions(
+    facets.value?.facets.engagement,
+    filters.engagement,
+    (value) => ENGAGEMENTS.get(value) ?? { label: value }
+  )
+)
+
+const broadcastOptions = computed(() =>
+  facetOptions(facets.value?.facets.broadcastId, filters.broadcastId, (_value, label) => ({
+    label: label ?? (facets.value ? 'Unknown broadcast' : 'Loading…')
+  }))
+)
+
+/** A single broadcast the page was opened for (a deep link), pinned as a scope chip. */
+const linkedBroadcast = filters.broadcastId?.includes(',') ? undefined : filters.broadcastId
+
+interface ScopeChip {
+  key: 'contactId' | 'templateId' | 'broadcastId' | 'recipient'
+  label: string
+}
+
+const scopes = computed<ScopeChip[]>(() => {
+  const scope = facets.value?.scope
+  const pending = !facets.value
+  const chips: ScopeChip[] = []
+
+  if (filters.contactId) {
+    const email = scope?.contact?.email ?? (pending ? '…' : 'Unknown contact')
+
+    chips.push({ key: 'contactId', label: `Contact: ${email}` })
+  }
+
+  if (filters.recipient) {
+    chips.push({ key: 'recipient', label: `Recipient: ${filters.recipient}` })
+  }
+
+  if (filters.templateId) {
+    const name = scope?.template?.name ?? (pending ? '…' : 'Unknown template')
+
+    chips.push({ key: 'templateId', label: `Template: ${name}` })
+  }
+
+  if (linkedBroadcast && filters.broadcastId === linkedBroadcast) {
+    const name = broadcastOptions.value.find((option) => option.value === linkedBroadcast)?.label
+
+    chips.push({ key: 'broadcastId', label: `Broadcast: ${name ?? '…'}` })
+  }
+
+  return chips
+})
+
+const STATUS_FILTERED = 'status'
+
+const outcome = computed<string | undefined>({
+  get: () => (filters.status ? STATUS_FILTERED : filters.outcome),
+  set: (value) => {
+    filters.outcome = value
+    filters.status = undefined
+  }
+})
+
+const tiles = computed<OverviewTile[]>(() => {
+  const counts = stats.value?.facets
+
+  return [
+    { key: 'all', label: 'All emails', value: stats.value?.total ?? null, selectable: true },
+    {
+      key: 'delivered',
+      label: 'Delivered',
+      value: counts?.delivered ?? null,
+      tone: 'success',
+      selectable: true
+    },
+    {
+      key: 'in_flight',
+      label: 'In progress',
+      value: counts?.in_flight ?? null,
+      tone: 'warning',
+      selectable: true
+    },
+    {
+      key: 'issues',
+      label: 'Bounced or failed',
+      value: counts?.issues ?? null,
+      tone: 'error',
+      selectable: true
+    },
+    {
+      key: 'skipped',
+      label: 'Suppressed',
+      value: counts?.skipped ?? null,
+      tone: 'neutral',
+      selectable: true
+    }
+  ]
+})
+
+watch(
+  () => filters.status,
+  (value) => {
+    if (value) filters.outcome = undefined
+  }
+)
+
+function refreshAll() {
+  void refresh()
+  void refreshStats()
+  void refreshFacets()
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -91,14 +243,26 @@ const {
   { server: false }
 )
 
-const broadcastFilterName = computed(() =>
-  filters.broadcastId
-    ? (items.value.find((i) => i.broadcast?.id === filters.broadcastId)?.broadcast?.name ??
-      'Selected broadcast')
-    : null
-)
-
 const UBadge = resolveComponent('UBadge')
+const UIcon = resolveComponent('UIcon')
+
+function engagement(item: EmailLogItem) {
+  if (!item.openCount && !item.clickCount) return emptyCell()
+
+  return h('span', { class: 'flex items-center justify-end gap-3 text-muted tabular-nums' }, [
+    h('span', { class: 'inline-flex items-center gap-1', title: `${item.openCount} opens` }, [
+      h(UIcon, { name: 'i-lucide-eye', class: 'size-3.5', 'aria-hidden': 'true' }),
+      h('span', { class: 'sr-only' }, 'Opens'),
+      String(item.openCount)
+    ]),
+    h('span', { class: 'inline-flex items-center gap-1', title: `${item.clickCount} clicks` }, [
+      h(UIcon, { name: 'i-lucide-mouse-pointer-click', class: 'size-3.5', 'aria-hidden': 'true' }),
+      h('span', { class: 'sr-only' }, 'Clicks'),
+      String(item.clickCount)
+    ])
+  ])
+}
+
 const StatusBadge = resolveComponent('StatusBadge')
 const TimeAgo = resolveComponent('TimeAgo')
 
@@ -128,13 +292,24 @@ const columns: TableColumn<EmailLogItem>[] = [
     accessorKey: 'kind',
     header: 'Kind',
     meta: { class: { th: 'w-32 hidden md:table-cell', td: 'w-32 hidden md:table-cell' } },
-    cell: ({ row }) => h(UBadge, { variant: 'outline', label: KIND_LABELS[row.original.kind] })
+    cell: ({ row }) => h(UBadge, { variant: 'outline', label: KIND_LABELS.get(row.original.kind) })
   },
   {
     accessorKey: 'status',
     header: 'Status',
     meta: { class: { th: 'w-32', td: 'w-32' } },
     cell: ({ row }) => h(StatusBadge, { status: row.original.status })
+  },
+  {
+    id: 'engagement',
+    header: 'Engagement',
+    meta: {
+      class: {
+        th: 'w-32 hidden lg:table-cell text-right',
+        td: 'w-32 hidden lg:table-cell text-right'
+      }
+    },
+    cell: ({ row }) => engagement(row.original)
   },
   {
     id: 'time',
@@ -151,22 +326,25 @@ function onSelect(_event: Event, row: TableRow<EmailLogItem>) {
 }
 
 const rowIds = computed(() => items.value.map((i) => i.id))
-
-const search = useTemplateRef<{ inputRef?: HTMLInputElement | null }>('search')
-
-defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
 </script>
 
 <template>
-  <LogsPanel v-model:tab="tab">
-    <template #filters>
+  <LogsPanel
+    v-model:tab="tab"
+    v-model:range="range"
+    :active="active"
+    :loading="loading"
+    refresh-label="Refresh emails"
+    @clear="clear"
+    @refresh="refreshAll"
+  >
+    <template #facets>
       <UInput
-        ref="search"
         v-model="q"
         icon="i-lucide-search"
         placeholder="Search recipient or subject…"
         size="sm"
-        class="w-full sm:w-64"
+        class="w-full"
         aria-label="Search emails"
       >
         <template #trailing>
@@ -181,62 +359,55 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
           />
         </template>
       </UInput>
-      <USelect
+      <div v-if="scopes.length" class="flex flex-wrap gap-1.5">
+        <UButton
+          v-for="chip in scopes"
+          :key="chip.key"
+          :label="chip.label"
+          trailing-icon="i-lucide-x"
+          color="neutral"
+          variant="outline"
+          size="xs"
+          class="max-w-full"
+          :ui="{ label: 'truncate' }"
+          :aria-label="`Remove filter ${chip.label}`"
+          @click="filters[chip.key] = undefined"
+        />
+      </div>
+      <FacetsGroup
         v-model="filters.status"
-        :items="STATUS_ITEMS"
-        placeholder="All statuses"
-        size="sm"
-        class="w-36"
-        aria-label="Filter by status"
+        title="Status"
+        :items="statusOptions"
+        :loading="facetsLoading"
       />
-      <USelect
+      <FacetsGroup
+        v-model="filters.engagement"
+        title="Engagement"
+        :items="engagementOptions"
+        :loading="facetsLoading"
+      />
+      <FacetsGroup
         v-model="filters.kind"
-        :items="KIND_ITEMS"
-        placeholder="All kinds"
-        size="sm"
-        class="w-36"
-        aria-label="Filter by kind"
+        title="Kind"
+        :items="kindOptions"
+        :loading="facetsLoading"
       />
-      <USelect
-        v-model="filters.period"
-        :items="PERIOD_ITEMS"
-        placeholder="Any time"
-        icon="i-lucide-calendar"
-        size="sm"
-        class="w-40"
-        aria-label="Filter by time range"
-      />
-      <UButton
-        v-if="broadcastFilterName"
-        :label="`Broadcast: ${broadcastFilterName}`"
-        trailing-icon="i-lucide-x"
-        variant="outline"
-        size="sm"
-        class="max-w-64"
-        :aria-label="`Remove filter Broadcast: ${broadcastFilterName}`"
-        @click="filters.broadcastId = undefined"
+      <FacetsGroup
+        v-model="filters.broadcastId"
+        title="Broadcast"
+        :items="broadcastOptions"
+        :loading="facetsLoading"
       />
     </template>
 
-    <template #actions>
-      <UButton
-        v-if="isFiltered"
-        label="Clear filters"
-        variant="ghost"
-        size="sm"
-        @click="clearFilters"
-      />
-      <UTooltip text="Refresh">
-        <UButton
-          icon="i-lucide-refresh-cw"
-          variant="ghost"
-          size="sm"
-          aria-label="Refresh emails"
-          :loading="loading"
-          @click="() => refresh()"
-        />
-      </UTooltip>
-    </template>
+    <LogsOverview
+      v-model:selected="outcome"
+      title="Email volume"
+      :tiles="tiles"
+      :stats="stats"
+      :loading="statsLoading"
+      :series="{ ok: 'Delivered', other: 'Other', issues: 'Bounced or failed' }"
+    />
 
     <EmptyState
       v-if="error && !items.length"
@@ -257,7 +428,7 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
       :columns="columns"
       :loading="loading"
       sticky
-      :ui="tableUi"
+      :ui="wideTableUi"
       class="shrink-0"
       @select="onSelect"
     />

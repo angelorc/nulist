@@ -154,7 +154,12 @@ const notes = [
       </UFormField>
     </div>
 
-    <CodeBlock :code="snippets[language]" :label="`${currentLabel} example`" />
+    <CodeBlock
+      :code="snippets[language]"
+      :label="`${currentLabel} example`"
+      :lang="({ curl: 'shell', node: 'javascript', python: 'python' } as const)[language]"
+      line-numbers
+    />
 
     <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
       <div v-for="note in notes" :key="note.term" class="min-w-0">

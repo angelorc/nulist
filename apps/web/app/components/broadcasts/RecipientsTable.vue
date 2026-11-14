@@ -75,10 +75,7 @@ function clearFilters() {
 }
 
 /** The recipient's message in the email log (members who may read logs). */
-const logLocation = (messageId: string) => ({
-  path: '/logs',
-  query: { tab: 'emails', id: messageId }
-})
+const logLocation = (messageId: string) => LogLinks.emails({ id: messageId })
 
 const emailClass = 'block max-w-full truncate font-mono text-xs text-highlighted'
 

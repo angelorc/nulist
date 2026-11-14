@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ButtonProps, DropdownMenuItem, TabsItem } from '@nuxt/ui'
+import type { RouteLocationRaw } from 'vue-router'
 import type { BroadcastReport } from '#shared/types/analytics'
 import type { BroadcastDetail, BroadcastDto, BroadcastPreview } from '#shared/types/broadcasts'
+import type { EmailLogLink } from '~/utils/logLinks'
 
 type ReportTab = 'overview' | 'recipients' | 'content'
 
@@ -19,6 +21,7 @@ const canSend = computed(() => can({ broadcast: ['send'] }))
 const canCreate = computed(() => can({ broadcast: ['create'] }))
 const canDelete = computed(() => can({ broadcast: ['delete'] }))
 const canReadAudit = computed(() => can({ audit: ['read'] }))
+const canReadLogs = computed(() => can({ log: ['read'] }))
 
 /** The recipients tab lists contact emails and names. */
 const canReadRecipients = computed(() => can({ contact: ['read'] }))
@@ -73,7 +76,11 @@ interface Kpi {
   value: number
   format: 'number' | 'percent'
   hint?: string
+  to?: RouteLocationRaw
 }
+
+const emailLogs = (filters: EmailLogLink = {}) =>
+  canReadLogs.value ? LogLinks.emails({ broadcastId: id, ...filters }) : undefined
 
 const kpis = computed<Kpi[]>(() => {
   const r = report.value
@@ -87,28 +94,32 @@ const kpis = computed<Kpi[]>(() => {
       label: 'Recipients',
       value: recipients,
       format: 'number',
-      hint: `${number(totals?.sent ?? props.broadcast.progress.sent)} handed to the provider`
+      hint: `${number(totals?.sent ?? props.broadcast.progress.sent)} handed to the provider`,
+      to: emailLogs()
     },
     {
       key: 'delivered',
       label: 'Delivered',
       value: rates?.delivery ?? 0,
       format: 'percent',
-      hint: `${number(totals?.delivered)} delivered`
+      hint: `${number(totals?.delivered)} delivered`,
+      to: emailLogs({ status: [...DELIVERED_STATUSES] })
     },
     {
       key: 'open',
       label: 'Open rate',
       value: rates?.open ?? 0,
       format: 'percent',
-      hint: `Estimate: ${number(totals?.uniqueOpens)} unique opens. Privacy proxies such as Apple Mail preload images, which inflates opens.`
+      hint: `Estimate: ${number(totals?.uniqueOpens)} unique opens. Privacy proxies such as Apple Mail preload images, which inflates opens.`,
+      to: emailLogs({ engagement: ['opened', 'clicked'] })
     },
     {
       key: 'click',
       label: 'Click rate',
       value: rates?.click ?? 0,
       format: 'percent',
-      hint: `${number(totals?.uniqueClicks)} unique clicks`
+      hint: `${number(totals?.uniqueClicks)} unique clicks`,
+      to: emailLogs({ engagement: ['clicked'] })
     },
     {
       key: 'ctor',
@@ -122,14 +133,16 @@ const kpis = computed<Kpi[]>(() => {
       label: 'Bounces',
       value: rates?.bounce ?? 0,
       format: 'percent',
-      hint: `${number(totals?.bounced)} bounced. Keep this under 2%.`
+      hint: `${number(totals?.bounced)} bounced. Keep this under 2%.`,
+      to: emailLogs({ status: ['bounced'] })
     },
     {
       key: 'complaint',
       label: 'Complaints',
       value: rates?.complaint ?? 0,
       format: 'percent',
-      hint: `${number(totals?.complained)} spam reports. Keep this under 0.1%.`
+      hint: `${number(totals?.complained)} spam reports. Keep this under 0.1%.`,
+      to: emailLogs({ status: ['complained'] })
     },
     {
       key: 'unsubscribe',
@@ -266,6 +279,24 @@ const menuItems = computed(() => {
   if (canCreate.value)
     groups.push([{ label: 'Duplicate', icon: 'i-lucide-copy', onSelect: onDuplicate }])
 
+  const history: DropdownMenuItem[] = []
+
+  if (canReadLogs.value)
+    history.push({
+      label: 'View emails in Logs',
+      icon: 'i-lucide-scroll-text',
+      to: LogLinks.emails({ broadcastId: id })
+    })
+
+  if (canReadAudit.value)
+    history.push({
+      label: 'View in audit log',
+      icon: 'i-lucide-history',
+      to: LogLinks.audit({ entityType: 'broadcast', entityId: id })
+    })
+
+  if (history.length) groups.push(history)
+
   if (live.value && canSend.value) {
     groups.push([
       { label: 'Cancel broadcast', icon: 'i-lucide-ban', color: 'error', onSelect: onCancel }
@@ -287,7 +318,7 @@ const failedActions = computed(() => {
       label: 'View in audit log',
       variant: 'outline',
       size: 'xs',
-      to: `/audit?entityType=broadcast&entityId=${props.broadcast.id}`
+      to: LogLinks.audit({ entityType: 'broadcast', entityId: id })
     })
   }
 
@@ -393,6 +424,7 @@ const stoppedSummary = computed(() => {
         <div class="min-w-0 space-y-6">
           <BroadcastsReportProgress
             v-if="live"
+            :broadcast-id="broadcast.id"
             :status="broadcast.status"
             :progress="broadcast.progress"
           />
@@ -441,6 +473,7 @@ const stoppedSummary = computed(() => {
                   :value="kpi.value"
                   :format="kpi.format"
                   :hint="kpi.hint"
+                  :to="kpi.to"
                   :loading="reportLoading"
                 />
               </div>

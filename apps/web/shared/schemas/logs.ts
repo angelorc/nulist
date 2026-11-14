@@ -8,6 +8,42 @@ import { paginationSchema } from './pagination'
 
 export const LOG_PERIODS = ['24h', '7d', '30d', '90d'] as const
 
+export const EMAIL_ENGAGEMENTS = ['clicked', 'opened', 'none'] as const
+
+export const ACTOR_TYPES = ['user', 'api_key', 'system'] as const
+
+export const INBOUND_STATUSES = ['processed', 'ignored', 'failed'] as const
+
+/** Longest custom date range a query may ask for. */
+export const MAX_RANGE_DAYS = 366
+
+/** `a,b,c` in the query string (or a repeated key) as a non-empty list. */
+function listOf<T extends z.ZodType<unknown, string>>(item: T) {
+  const list = z.array(item).min(1).max(50)
+
+  return z
+    .union([
+      z
+        .string()
+        .transform((value) => value.split(',').filter(Boolean))
+        .pipe(list),
+      list
+    ])
+    .optional()
+}
+
+/**
+ * Time filter shared by every log and analytics query: a preset `period`, or a custom
+ * `from`/`to` range of whole UTC days (both inclusive, `YYYY-MM-DD`).
+ */
+export const dateRangeQuerySchema = z.object({
+  period: z.enum(LOG_PERIODS).optional(),
+  from: z.iso.date().optional(),
+  to: z.iso.date().optional()
+})
+
+export type DateRangeQuery = z.infer<typeof dateRangeQuerySchema>
+
 export const MESSAGE_STATUSES = [
   'queued',
   'scheduled',
@@ -22,6 +58,18 @@ export const MESSAGE_STATUSES = [
   'suppressed',
   'cancelled'
 ] as const
+
+export const EMAIL_OUTCOMES = ['delivered', 'in_flight', 'issues', 'skipped'] as const
+
+export const EMAIL_OUTCOME_STATUSES = {
+  delivered: ['delivered', 'sent'],
+  in_flight: ['queued', 'scheduled', 'sending', 'delayed'],
+  issues: ['bounced', 'complained', 'failed', 'rejected'],
+  skipped: ['suppressed', 'cancelled']
+} as const satisfies Record<
+  (typeof EMAIL_OUTCOMES)[number],
+  readonly (typeof MESSAGE_STATUSES)[number][]
+>
 
 export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
 
@@ -41,41 +89,49 @@ export const SES_EVENT_TYPES = [
 ] as const
 
 export const emailLogQuerySchema = paginationSchema.extend({
-  status: z.enum(MESSAGE_STATUSES).optional(),
-  kind: z.enum(['broadcast', 'transactional', 'system']).optional(),
-  broadcastId: z.uuid().optional(),
+  ...dateRangeQuerySchema.shape,
+  status: listOf(z.enum(MESSAGE_STATUSES)),
+  outcome: z.enum(EMAIL_OUTCOMES).optional(),
+  kind: listOf(z.enum(['broadcast', 'transactional', 'system'])),
+  engagement: listOf(z.enum(EMAIL_ENGAGEMENTS)),
+  broadcastId: listOf(z.uuid()),
   contactId: z.uuid().optional(),
-  period: z.enum(LOG_PERIODS).optional(),
-  from: z.coerce.date().optional(),
-  to: z.coerce.date().optional()
+  templateId: z.uuid().optional(),
+  recipient: z.string().trim().min(1).max(320).optional()
 })
 
 export type EmailLogQuery = z.infer<typeof emailLogQuerySchema>
 
 export const apiLogQuerySchema = paginationSchema.extend({
-  method: z.enum(HTTP_METHODS).optional(),
-  status: z.enum(STATUS_CLASSES).optional(),
-  apiKeyId: z.uuid().optional(),
-  period: z.enum(LOG_PERIODS).optional()
+  ...dateRangeQuerySchema.shape,
+  method: listOf(z.enum(HTTP_METHODS)),
+  status: listOf(z.enum(STATUS_CLASSES)),
+  apiKeyId: listOf(z.uuid())
 })
 
 export type ApiLogQuery = z.infer<typeof apiLogQuerySchema>
 
 export const inboundEventQuerySchema = paginationSchema.extend({
-  status: z.enum(['processed', 'ignored', 'failed']).optional(),
-  eventType: z.enum(SES_EVENT_TYPES).optional(),
-  period: z.enum(LOG_PERIODS).optional()
+  ...dateRangeQuerySchema.shape,
+  status: listOf(z.enum(INBOUND_STATUSES)),
+  eventType: listOf(z.enum(SES_EVENT_TYPES)),
+  recipient: z.string().trim().min(1).max(320).optional()
 })
 
 export type InboundEventQuery = z.infer<typeof inboundEventQuerySchema>
 
 export const auditQuerySchema = paginationSchema.extend({
-  entityType: z.string().trim().min(1).max(64).optional(),
-  entityId: z.string().trim().min(1).max(128).optional()
+  ...dateRangeQuerySchema.shape,
+  entityType: listOf(z.string().trim().min(1).max(64)),
+  entityId: z.string().trim().min(1).max(128).optional(),
+  actorType: listOf(z.enum(ACTOR_TYPES)),
+  action: listOf(z.string().trim().min(1).max(64))
 })
 
 export const analyticsQuerySchema = z.object({
-  range: z.enum(['7d', '30d', '90d']).default('30d')
+  range: z.enum(['7d', '30d', '90d']).default('30d'),
+  from: z.iso.date().optional(),
+  to: z.iso.date().optional()
 })
 
 export const uuidParamSchema = z.object({ id: z.uuid() })

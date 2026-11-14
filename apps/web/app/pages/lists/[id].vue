@@ -33,6 +33,7 @@ useSeoMeta({ title: () => list.value?.name ?? 'List' })
 const { can } = useOrganization()
 const canUpdate = computed(() => can({ list: ['update'] }))
 const canDelete = computed(() => can({ list: ['delete'] }))
+const canReadAudit = computed(() => can({ audit: ['read'] }))
 const canImport = computed(() => can({ contact: ['import'] }))
 
 interface Member {
@@ -109,6 +110,15 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
 
   if (canUpdate.value)
     groups.push([{ label: 'Edit list', icon: 'i-lucide-pencil', onSelect: edit }])
+
+  if (canReadAudit.value)
+    groups.push([
+      {
+        label: 'View history',
+        icon: 'i-lucide-history',
+        to: LogLinks.audit({ entityType: 'list', entityId: id })
+      }
+    ])
 
   if (canDelete.value)
     groups.push([

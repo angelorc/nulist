@@ -1,35 +1,37 @@
 <script setup lang="ts">
 import type { TableColumn, TableRow } from '@nuxt/ui'
 import type { JsonValue } from '#shared/types/domain'
-import type { ApiLogDetail, ApiLogItem } from '#shared/types/logs'
+import type {
+  ApiLogDetail,
+  ApiLogFacets,
+  ApiLogItem,
+  ApiLogStats,
+  StatusClass
+} from '#shared/types/logs'
+import type { FacetOption } from '../facets/Group.vue'
 import type { DetailRow } from './DetailList.vue'
+import type { OverviewTile } from './Overview.vue'
 import type { LogTab } from './Panel.vue'
 import { selectedEntrySchema } from '#shared/schemas/logs'
 
 const tab = defineModel<LogTab>('tab', { required: true })
 
-const METHOD_ITEMS = [
-  { label: 'All methods', value: 'all' },
-  ...['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => ({ label: m, value: m }))
-]
+const STATUS_CLASSES = new Map<string, Pick<FacetOption, 'label' | 'color'>>([
+  ['2xx', { label: '2xx success', color: 'success' }],
+  ['3xx', { label: '3xx redirect', color: 'info' }],
+  ['4xx', { label: '4xx client error', color: 'warning' }],
+  ['5xx', { label: '5xx server error', color: 'error' }]
+] satisfies [StatusClass, Pick<FacetOption, 'label' | 'color'>][])
 
-const STATUS_ITEMS = [
-  { label: 'All responses', value: 'all' },
-  { label: '2xx success', value: '2xx' },
-  { label: '3xx redirect', value: '3xx' },
-  { label: '4xx client error', value: '4xx' },
-  { label: '5xx server error', value: '5xx' }
-]
-
-const PERIOD_ITEMS = [
-  { label: 'Any time', value: 'all' },
-  { label: 'Last 24 hours', value: '24h' },
-  { label: 'Last 7 days', value: '7d' },
-  { label: 'Last 30 days', value: '30d' }
-]
-
-/** Filter values as the selects hold them (`all` means no filter). */
-type ApiLogFilters = { method?: string; status?: string; period?: string }
+/** Filter values as the URL query holds them (lists comma-joined). */
+type ApiLogFilters = {
+  status?: string
+  method?: string
+  apiKeyId?: string
+  period?: string
+  from?: string
+  to?: string
+}
 
 const {
   page,
@@ -44,8 +46,92 @@ const {
   isFiltered,
   clearFilters
 } = usePaginatedList<ApiLogItem, ApiLogFilters>('/api/logs/api', {
-  filters: { method: undefined, status: undefined, period: undefined }
+  filters: {
+    status: undefined,
+    method: undefined,
+    apiKeyId: undefined,
+    period: undefined,
+    from: undefined,
+    to: undefined
+  }
 })
+
+const {
+  facets,
+  loading: facetsLoading,
+  refresh: refreshFacets,
+  range,
+  active,
+  clear
+} = useLogFacets<ApiLogFacets>('/api/logs/api/facets', q, filters)
+
+const statusOptions = computed(() =>
+  facetOptions(
+    facets.value?.facets.status,
+    filters.status,
+    (value) => STATUS_CLASSES.get(value) ?? { label: value }
+  )
+)
+
+const methodOptions = computed(() =>
+  facetOptions(facets.value?.facets.method, filters.method, (value) => ({ label: value }))
+)
+
+const apiKeyOptions = computed(() =>
+  facetOptions(facets.value?.facets.apiKeyId, filters.apiKeyId, (_value, label) => ({
+    label: label ?? (facets.value ? 'Unnamed key' : 'Loading…')
+  }))
+)
+
+const { number, dateTime } = useFormat()
+
+const {
+  stats,
+  loading: statsLoading,
+  refresh: refreshStats
+} = useLogStats<ApiLogStats>('/api/logs/api/stats', q, filters, ['status'])
+
+const tiles = computed<OverviewTile[]>(() => {
+  const s = stats.value
+
+  return [
+    { key: 'all', label: 'All requests', value: s?.total ?? null, selectable: true },
+    {
+      key: '2xx',
+      label: 'Successful',
+      value: s?.facets['2xx'] ?? null,
+      tone: 'success',
+      selectable: true
+    },
+    {
+      key: '4xx',
+      label: 'Client errors',
+      value: s?.facets['4xx'] ?? null,
+      tone: 'warning',
+      selectable: true
+    },
+    {
+      key: '5xx',
+      label: 'Server errors',
+      value: s?.facets['5xx'] ?? null,
+      tone: 'error',
+      selectable: true
+    },
+    {
+      key: 'p95',
+      label: 'p95 latency',
+      value: s?.p95Ms ?? null,
+      display: s?.p95Ms == null ? '—' : `${number(s.p95Ms)} ms`,
+      hint: '95% of requests completed within this time.'
+    }
+  ]
+})
+
+function refreshAll() {
+  void refresh()
+  void refreshStats()
+  void refreshFacets()
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -72,8 +158,6 @@ const {
   },
   { server: false }
 )
-
-const { number, dateTime } = useFormat()
 
 const MethodBadge = resolveComponent('LogsMethodBadge')
 const StatusCode = resolveComponent('LogsStatusCode')
@@ -171,22 +255,25 @@ function hasBody(value: JsonValue | null): boolean {
 
   return value instanceof Object ? Object.keys(value).length > 0 : true
 }
-
-const search = useTemplateRef<{ inputRef?: HTMLInputElement | null }>('search')
-
-defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
 </script>
 
 <template>
-  <LogsPanel v-model:tab="tab">
-    <template #filters>
+  <LogsPanel
+    v-model:tab="tab"
+    v-model:range="range"
+    :active="active"
+    :loading="loading"
+    refresh-label="Refresh API requests"
+    @clear="clear"
+    @refresh="refreshAll"
+  >
+    <template #facets>
       <UInput
-        ref="search"
         v-model="q"
         icon="i-lucide-search"
         placeholder="Search path…"
         size="sm"
-        class="w-full sm:w-64"
+        class="w-full"
         aria-label="Search requests by path"
       >
         <template #trailing>
@@ -201,52 +288,34 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
           />
         </template>
       </UInput>
-      <USelect
-        v-model="filters.method"
-        :items="METHOD_ITEMS"
-        placeholder="All methods"
-        size="sm"
-        class="w-36"
-        aria-label="Filter by method"
-      />
-      <USelect
+      <FacetsGroup
         v-model="filters.status"
-        :items="STATUS_ITEMS"
-        placeholder="All responses"
-        size="sm"
-        class="w-40"
-        aria-label="Filter by response status"
+        title="Response"
+        :items="statusOptions"
+        :loading="facetsLoading"
       />
-      <USelect
-        v-model="filters.period"
-        :items="PERIOD_ITEMS"
-        placeholder="Any time"
-        icon="i-lucide-calendar"
-        size="sm"
-        class="w-40"
-        aria-label="Filter by time range"
+      <FacetsGroup
+        v-model="filters.method"
+        title="Method"
+        :items="methodOptions"
+        :loading="facetsLoading"
+      />
+      <FacetsGroup
+        v-model="filters.apiKeyId"
+        title="API key"
+        :items="apiKeyOptions"
+        :loading="facetsLoading"
       />
     </template>
 
-    <template #actions>
-      <UButton
-        v-if="isFiltered"
-        label="Clear filters"
-        variant="ghost"
-        size="sm"
-        @click="clearFilters"
-      />
-      <UTooltip text="Refresh">
-        <UButton
-          icon="i-lucide-refresh-cw"
-          variant="ghost"
-          size="sm"
-          aria-label="Refresh API requests"
-          :loading="loading"
-          @click="() => refresh()"
-        />
-      </UTooltip>
-    </template>
+    <LogsOverview
+      v-model:selected="filters.status"
+      title="Request volume"
+      :tiles="tiles"
+      :stats="stats"
+      :loading="statsLoading"
+      :series="{ ok: 'Successful', issues: 'Errors' }"
+    />
 
     <EmptyState
       v-if="error && !items.length"
@@ -267,7 +336,7 @@ defineShortcuts({ '/': () => search.value?.inputRef?.focus() })
       :columns="columns"
       :loading="loading"
       sticky
-      :ui="tableUi"
+      :ui="wideTableUi"
       class="shrink-0"
       @select="onSelect"
     />

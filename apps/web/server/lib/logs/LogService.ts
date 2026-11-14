@@ -1,4 +1,18 @@
-import { and, asc, count, desc, eq, gte, ilike, lt, lte, or } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lt,
+  max,
+  notInArray,
+  or,
+  sql
+} from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import type { Database } from '../../db/client'
 import {
@@ -14,34 +28,65 @@ import {
 } from '../../db/schema'
 import type { Paginated } from '../../../shared/types/domain'
 import type {
+  ApiFacetKey,
   ApiLogDetail,
+  ApiLogFacets,
   ApiLogItem,
+  ApiLogStats,
   AuditLogItem,
+  EmailEngagement,
   EmailEventItem,
+  EmailFacetKey,
   EmailLogDetail,
+  EmailLogFacets,
   EmailLogItem,
+  EmailLogStats,
+  EmailOutcome,
   InboundEventDetail,
+  InboundEventFacets,
   InboundEventItem,
-  LogPeriod
+  InboundEventStats,
+  InboundFacetKey,
+  InboundStatus,
+  StatusClass
 } from '../../../shared/types/logs'
 import { NotFoundError } from '../core/errors'
 import { Page } from '../core/pagination'
-import { recordedBodySchema } from '../../../shared/schemas/logs'
+import {
+  EMAIL_OUTCOME_STATUSES,
+  EMAIL_OUTCOMES,
+  recordedBodySchema
+} from '../../../shared/schemas/logs'
 import type { ApiLogQuery, EmailLogQuery, InboundEventQuery } from '../../../shared/schemas/logs'
 import { containsPattern } from '../core/sql'
 import type { TenantScope } from '../core/TenantScope'
-
-const PERIOD_MS: Record<LogPeriod, number> = {
-  '24h': 86_400_000,
-  '7d': 7 * 86_400_000,
-  '30d': 30 * 86_400_000,
-  '90d': 90 * 86_400_000
-}
+import { FacetCounter } from './FacetCounter'
+import { LogWindow } from './LogWindow'
+import { SesEventSummary } from './SesEventSummary'
 
 const STATUS_CLASS_RANGE = { '2xx': 200, '3xx': 300, '4xx': 400, '5xx': 500 } as const
 
-function since(period: LogPeriod | undefined, now = Date.now()): Date | undefined {
-  return period ? new Date(now - PERIOD_MS[period]) : undefined
+const ISSUE_STATUSES = EMAIL_OUTCOME_STATUSES.issues
+const OK_STATUSES = EMAIL_OUTCOME_STATUSES.delivered
+
+const STATUS_OUTCOME = new Map(
+  EMAIL_OUTCOMES.flatMap((outcome) =>
+    EMAIL_OUTCOME_STATUSES[outcome].map((status): [string, EmailOutcome] => [status, outcome])
+  )
+)
+
+const HIGH_CARDINALITY_LIMIT = 20
+
+const ENGAGEMENT = sql<EmailEngagement>`case when ${messages.clickCount} > 0 then 'clicked' when ${messages.openCount} > 0 then 'opened' else 'none' end`
+
+const STATUS_CLASS = sql<StatusClass>`(${apiLogs.statusCode} / 100)::text || 'xx'`
+
+const INBOUND_TYPE = sql<string>`coalesce(${inboundEvents.eventType}, ${inboundEvents.type})`
+
+const INBOUND_MESSAGE = sql<string>`coalesce(${inboundEvents.payload}->>'Message', ${inboundEvents.payload}::text)`
+
+function tally(condition: SQL): SQL<number> {
+  return sql<number>`count(*) filter (where ${condition})`.mapWith(Number)
 }
 
 function iso(date: Date): string
@@ -60,25 +105,30 @@ function iso(date: Date | null): string | null {
 export class LogService {
   constructor(
     protected readonly scope: TenantScope,
-    protected readonly db: Database
+    protected readonly db: Database,
+    private readonly sesSummary = new SesEventSummary()
   ) {}
 
   // Emails ------------------------------------------------------------------
   private emailFilters(query: EmailLogQuery): SQL | undefined {
     const m = messages
-    const from = query.from ?? since(query.period)
+    const { from, to } = LogWindow.bounds(query)
 
     return and(
       this.scope.eq(m.organizationId),
       query.q
         ? or(ilike(m.toEmail, containsPattern(query.q)), ilike(m.subject, containsPattern(query.q)))
         : undefined,
-      query.status ? eq(m.status, query.status) : undefined,
-      query.kind ? eq(m.kind, query.kind) : undefined,
-      query.broadcastId ? eq(m.broadcastId, query.broadcastId) : undefined,
+      query.status ? inArray(m.status, query.status) : undefined,
+      query.outcome ? inArray(m.status, [...EMAIL_OUTCOME_STATUSES[query.outcome]]) : undefined,
+      query.kind ? inArray(m.kind, query.kind) : undefined,
+      query.engagement ? inArray(ENGAGEMENT, query.engagement) : undefined,
+      query.broadcastId ? inArray(m.broadcastId, query.broadcastId) : undefined,
       query.contactId ? eq(m.contactId, query.contactId) : undefined,
+      query.templateId ? eq(m.templateId, query.templateId) : undefined,
+      query.recipient ? sql`lower(${m.toEmail}) = lower(${query.recipient})` : undefined,
       from ? gte(m.createdAt, from) : undefined,
-      query.to ? lte(m.createdAt, query.to) : undefined
+      to ? lt(m.createdAt, to) : undefined
     )
   }
 
@@ -124,6 +174,98 @@ export class LogService {
     )
 
     return page.wrap(items, total?.value ?? 0)
+  }
+
+  async emailStats(query: EmailLogQuery): Promise<EmailLogStats> {
+    const m = messages
+    const window = LogWindow.of(query)
+    const scoped = this.emailFilters({ ...query, status: undefined, outcome: undefined })
+    const bucket = window.bucketKey(m.createdAt)
+
+    const [byStatus, volume, [last]] = await Promise.all([
+      this.db.select({ status: m.status, value: count() }).from(m).where(scoped).groupBy(m.status),
+      this.db
+        .select({
+          at: bucket,
+          ok: tally(inArray(m.status, [...OK_STATUSES])),
+          issues: tally(inArray(m.status, [...ISSUE_STATUSES])),
+          other: tally(notInArray(m.status, [...OK_STATUSES, ...ISSUE_STATUSES]))
+        })
+        .from(m)
+        .where(and(scoped, window.within(m.createdAt)))
+        .groupBy(sql`1`),
+      this.db
+        .select({ value: max(m.createdAt) })
+        .from(m)
+        .where(this.scope.eq(m.organizationId))
+    ])
+
+    const facets: Record<EmailOutcome, number> = {
+      delivered: 0,
+      in_flight: 0,
+      issues: 0,
+      skipped: 0
+    }
+
+    for (const row of byStatus) {
+      const outcome = STATUS_OUTCOME.get(row.status)
+
+      if (outcome) facets[outcome] += row.value
+    }
+
+    return {
+      total: byStatus.reduce((sum, row) => sum + row.value, 0),
+      facets,
+      volume: window.fill(volume),
+      bucket: window.bucket,
+      window: window.range,
+      lastAt: last?.value ? iso(last.value) : null
+    }
+  }
+
+  async emailFacets(query: EmailLogQuery): Promise<EmailLogFacets> {
+    const m = messages
+
+    const facets = new FacetCounter<EmailFacetKey>(
+      this.db,
+      m,
+      (key) => this.emailFilters({ ...query, [key]: undefined }),
+      query
+    )
+
+    const [status, kind, engagement, broadcastId, [contact], [template]] = await Promise.all([
+      facets.count('status', { value: m.status }),
+      facets.count('kind', { value: m.kind }),
+      facets.count('engagement', { value: ENGAGEMENT }),
+      facets.count('broadcastId', {
+        value: m.broadcastId,
+        label: {
+          table: broadcasts,
+          on: eq(broadcasts.id, m.broadcastId),
+          name: broadcasts.name,
+          id: broadcasts.id,
+          scope: this.scope.eq(broadcasts.organizationId)
+        },
+        limit: HIGH_CARDINALITY_LIMIT
+      }),
+      query.contactId
+        ? this.db
+            .select({ id: contacts.id, email: contacts.email })
+            .from(contacts)
+            .where(and(this.scope.eq(contacts.organizationId), eq(contacts.id, query.contactId)))
+        : [],
+      query.templateId
+        ? this.db
+            .select({ id: templates.id, name: templates.name })
+            .from(templates)
+            .where(and(this.scope.eq(templates.organizationId), eq(templates.id, query.templateId)))
+        : []
+    ])
+
+    return {
+      facets: { status, kind, engagement, broadcastId },
+      scope: { contact: contact ?? null, template: template ?? null }
+    }
   }
 
   async message(id: string): Promise<EmailLogDetail> {
@@ -206,24 +348,64 @@ export class LogService {
   }
 
   // Inbound provider events -------------------------------------------------
-  async inboundEvents(query: InboundEventQuery): Promise<Paginated<InboundEventItem>> {
-    const page = Page.from(query)
+  private inboundFilters(query: InboundEventQuery): SQL | undefined {
     const ie = inboundEvents
-    const from = since(query.period)
+    const { from, to } = LogWindow.bounds(query)
 
-    const where = and(
+    return and(
       this.scope.eq(ie.organizationId),
       query.q
         ? or(
             ilike(ie.snsMessageId, containsPattern(query.q)),
             ilike(ie.eventType, containsPattern(query.q)),
-            ilike(ie.type, containsPattern(query.q))
+            ilike(ie.type, containsPattern(query.q)),
+            ilike(sql`${ie.payload}::text`, containsPattern(query.q))
           )
         : undefined,
-      query.status ? eq(ie.status, query.status) : undefined,
-      query.eventType ? eq(ie.eventType, query.eventType) : undefined,
-      from ? gte(ie.createdAt, from) : undefined
+      query.status ? inArray(ie.status, query.status) : undefined,
+      query.eventType ? inArray(ie.eventType, query.eventType) : undefined,
+      query.recipient ? ilike(INBOUND_MESSAGE, containsPattern(`"${query.recipient}"`)) : undefined,
+      from ? gte(ie.createdAt, from) : undefined,
+      to ? lt(ie.createdAt, to) : undefined
     )
+  }
+
+  private async describeInbound<T extends { message: string | null; createdAt: Date }>(
+    rows: T[]
+  ): Promise<
+    (Omit<T, 'message' | 'createdAt'> &
+      Pick<InboundEventItem, 'createdAt' | 'recipient' | 'detail' | 'message'>)[]
+  > {
+    const facts = rows.map((row) => this.sesSummary.read(row.message))
+    const ids = [...new Set(facts.flatMap((f) => (f.messageId ? [f.messageId] : [])))]
+
+    const subjects = ids.length
+      ? await this.db
+          .select({ id: messages.id, subject: messages.subject })
+          .from(messages)
+          .where(and(this.scope.eq(messages.organizationId), inArray(messages.id, ids)))
+      : []
+
+    const byId = new Map(subjects.map((m) => [m.id, m]))
+
+    return rows.map(({ message: _message, createdAt, ...row }, i) => {
+      const fact = facts[i]
+      const linked = fact?.messageId ? byId.get(fact.messageId) : undefined
+
+      return {
+        ...row,
+        createdAt: iso(createdAt),
+        recipient: fact?.recipient ?? null,
+        detail: fact?.detail ?? null,
+        message: linked ? { id: linked.id, subject: linked.subject } : null
+      }
+    })
+  }
+
+  async inboundEvents(query: InboundEventQuery): Promise<Paginated<InboundEventItem>> {
+    const page = Page.from(query)
+    const ie = inboundEvents
+    const where = this.inboundFilters(query)
 
     const [rows, [total]] = await Promise.all([
       this.db
@@ -235,7 +417,8 @@ export class LogService {
           topicArn: ie.topicArn,
           status: ie.status,
           error: ie.error,
-          createdAt: ie.createdAt
+          createdAt: ie.createdAt,
+          message: sql<string>`coalesce(${ie.payload}->>'Message', ${ie.payload}::text)`
         })
         .from(ie)
         .where(where)
@@ -245,21 +428,99 @@ export class LogService {
       this.db.select({ value: count() }).from(ie).where(where)
     ])
 
-    return page.wrap(
-      rows.map((row) => ({ ...row, createdAt: iso(row.createdAt) })),
-      total?.value ?? 0
-    )
+    return page.wrap(await this.describeInbound(rows), total?.value ?? 0)
   }
 
   async inboundEvent(id: string): Promise<InboundEventDetail> {
     const [row] = await this.db
-      .select()
+      .select({
+        id: inboundEvents.id,
+        snsMessageId: inboundEvents.snsMessageId,
+        type: inboundEvents.type,
+        eventType: inboundEvents.eventType,
+        topicArn: inboundEvents.topicArn,
+        status: inboundEvents.status,
+        error: inboundEvents.error,
+        createdAt: inboundEvents.createdAt,
+        payload: inboundEvents.payload,
+        message: sql<string>`coalesce(${inboundEvents.payload}->>'Message', ${inboundEvents.payload}::text)`
+      })
       .from(inboundEvents)
       .where(and(this.scope.eq(inboundEvents.organizationId), eq(inboundEvents.id, id)))
 
     if (!row) throw new NotFoundError('Event', id)
+    const [described] = await this.describeInbound([row])
 
-    return { ...row, createdAt: iso(row.createdAt) }
+    if (!described) throw new NotFoundError('Event', id)
+
+    return described
+  }
+
+  async inboundStats(query: InboundEventQuery): Promise<InboundEventStats> {
+    const ie = inboundEvents
+    const window = LogWindow.of(query)
+    const scoped = this.inboundFilters({ ...query, status: undefined, eventType: undefined })
+    const bucket = window.bucketKey(ie.createdAt)
+
+    const [byStatus, types, volume, [last]] = await Promise.all([
+      this.db
+        .select({ status: ie.status, value: count() })
+        .from(ie)
+        .where(scoped)
+        .groupBy(ie.status),
+      this.db
+        .select({ type: INBOUND_TYPE, value: count() })
+        .from(ie)
+        .where(scoped)
+        .groupBy(sql`1`)
+        .orderBy(desc(count())),
+      this.db
+        .select({
+          at: bucket,
+          ok: tally(eq(ie.status, 'processed')),
+          issues: tally(eq(ie.status, 'failed')),
+          other: tally(eq(ie.status, 'ignored'))
+        })
+        .from(ie)
+        .where(and(scoped, window.within(ie.createdAt)))
+        .groupBy(sql`1`),
+      this.db
+        .select({ value: max(ie.createdAt) })
+        .from(ie)
+        .where(this.scope.eq(ie.organizationId))
+    ])
+
+    const facets: Record<InboundStatus, number> = { processed: 0, ignored: 0, failed: 0 }
+
+    for (const row of byStatus) facets[row.status] = row.value
+
+    return {
+      total: byStatus.reduce((sum, row) => sum + row.value, 0),
+      facets,
+      types: types.map((row) => ({ type: row.type, count: row.value })),
+      volume: window.fill(volume),
+      bucket: window.bucket,
+      window: window.range,
+      lastAt: last?.value ? iso(last.value) : null
+    }
+  }
+
+  async inboundFacets(query: InboundEventQuery): Promise<InboundEventFacets> {
+    const ie = inboundEvents
+
+    const facets = new FacetCounter<InboundFacetKey>(
+      this.db,
+      ie,
+      (key) => this.inboundFilters({ ...query, [key]: undefined }),
+      query
+    )
+
+    const [status, eventType] = await Promise.all([
+      facets.count('status', { value: ie.status }),
+      facets.count('eventType', { value: INBOUND_TYPE })
+    ])
+
+    return { facets: { status, eventType } }
   }
 
   // API requests ------------------------------------------------------------
@@ -299,22 +560,31 @@ export class LogService {
     }
   }
 
+  private apiFilters(query: ApiLogQuery): SQL | undefined {
+    const a = apiLogs
+    const { from, to } = LogWindow.bounds(query)
+
+    const statusClasses = query.status?.map((status) => {
+      const floor = STATUS_CLASS_RANGE[status]
+
+      return and(gte(a.statusCode, floor), lt(a.statusCode, floor + 100))
+    })
+
+    return and(
+      this.scope.eq(a.organizationId),
+      query.q ? ilike(a.path, containsPattern(query.q)) : undefined,
+      query.method ? inArray(a.method, query.method) : undefined,
+      statusClasses ? or(...statusClasses) : undefined,
+      query.apiKeyId ? inArray(a.apiKeyId, query.apiKeyId) : undefined,
+      from ? gte(a.createdAt, from) : undefined,
+      to ? lt(a.createdAt, to) : undefined
+    )
+  }
+
   async apiLogs(query: ApiLogQuery): Promise<Paginated<ApiLogItem>> {
     const page = Page.from(query)
     const a = apiLogs
-    const from = since(query.period)
-    const statusFloor = query.status ? STATUS_CLASS_RANGE[query.status] : undefined
-
-    const where = and(
-      this.scope.eq(a.organizationId),
-      query.q ? ilike(a.path, containsPattern(query.q)) : undefined,
-      query.method ? eq(a.method, query.method) : undefined,
-      statusFloor
-        ? and(gte(a.statusCode, statusFloor), lt(a.statusCode, statusFloor + 100))
-        : undefined,
-      query.apiKeyId ? eq(a.apiKeyId, query.apiKeyId) : undefined,
-      from ? gte(a.createdAt, from) : undefined
-    )
+    const where = this.apiFilters(query)
 
     const [rows, [total]] = await Promise.all([
       this.db
@@ -352,6 +622,86 @@ export class LogService {
       requestBody: recordedBodySchema.parse(requestBody),
       responseBody: recordedBodySchema.parse(responseBody)
     }
+  }
+
+  async apiStats(query: ApiLogQuery): Promise<ApiLogStats> {
+    const a = apiLogs
+    const window = LogWindow.of(query)
+    const scoped = this.apiFilters({ ...query, status: undefined })
+    const bucket = window.bucketKey(a.createdAt)
+
+    const [byClass, [latency], volume, [last]] = await Promise.all([
+      this.db
+        .select({ status: STATUS_CLASS, value: count() })
+        .from(a)
+        .where(scoped)
+        .groupBy(sql`1`),
+      this.db
+        .select({
+          p95: sql<
+            number | null
+          >`percentile_cont(0.95) within group (order by ${a.durationMs})::float8`
+        })
+        .from(a)
+        .where(scoped),
+      this.db
+        .select({
+          at: bucket,
+          ok: tally(lt(a.statusCode, 400)),
+          issues: tally(gte(a.statusCode, 400)),
+          other: sql<number>`0`.mapWith(Number)
+        })
+        .from(a)
+        .where(and(scoped, window.within(a.createdAt)))
+        .groupBy(sql`1`),
+      this.db
+        .select({ value: max(a.createdAt) })
+        .from(a)
+        .where(this.scope.eq(a.organizationId))
+    ])
+
+    const facets: Record<StatusClass, number> = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 }
+
+    for (const row of byClass) if (row.status in facets) facets[row.status] = row.value
+
+    return {
+      total: byClass.reduce((sum, row) => sum + row.value, 0),
+      facets,
+      p95Ms: latency?.p95 == null ? null : Math.round(latency.p95),
+      volume: window.fill(volume),
+      bucket: window.bucket,
+      window: window.range,
+      lastAt: last?.value ? iso(last.value) : null
+    }
+  }
+
+  async apiFacets(query: ApiLogQuery): Promise<ApiLogFacets> {
+    const a = apiLogs
+
+    const facets = new FacetCounter<ApiFacetKey>(
+      this.db,
+      a,
+      (key) => this.apiFilters({ ...query, [key]: undefined }),
+      query
+    )
+
+    const [status, method, apiKeyId] = await Promise.all([
+      facets.count('status', { value: STATUS_CLASS }),
+      facets.count('method', { value: a.method }),
+      facets.count('apiKeyId', {
+        value: a.apiKeyId,
+        label: {
+          table: apikey,
+          on: eq(apikey.id, a.apiKeyId),
+          name: apikey.name,
+          id: apikey.id,
+          scope: this.scope.eq(apikey.referenceId)
+        },
+        limit: HIGH_CARDINALITY_LIMIT
+      })
+    ])
+
+    return { facets: { status, method, apiKeyId } }
   }
 
   // Audit -------------------------------------------------------------------

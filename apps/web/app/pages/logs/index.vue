@@ -11,8 +11,14 @@ const router = useRouter()
 
 const tab = computed<LogTab>({
   get: () => logTabSchema.catch('emails').parse(route.query.tab),
-  // Filters belong to one view, so switching starts from a clean query.
-  set: (value) => router.replace({ query: value === 'emails' ? {} : { tab: value } })
+  // Filters belong to one view, so switching keeps only the date range.
+  set: (value) => {
+    const { period, from, to } = route.query
+
+    void router.replace({
+      query: { tab: value === 'emails' ? undefined : value, period, from, to }
+    })
+  }
 })
 </script>
 

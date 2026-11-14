@@ -71,8 +71,8 @@ const tabs = [
     <UTabs :items="tabs" variant="link" size="sm" default-value="node" :ui="{ content: 'pt-3' }">
       <template #node>
         <div class="space-y-3">
-          <CodeBlock :code="install" label="install command" />
-          <CodeBlock :code="nodeExample" label="code example" />
+          <CodeBlock :code="install" label="install command" lang="shell" />
+          <CodeBlock :code="nodeExample" label="code example" lang="javascript" line-numbers />
         </div>
       </template>
 

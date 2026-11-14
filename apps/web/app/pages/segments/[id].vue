@@ -14,6 +14,7 @@ const { can } = useOrganization()
 const canUpdate = computed(() => can({ segment: ['update'] }))
 const canDelete = computed(() => can({ segment: ['delete'] }))
 const canViewContacts = computed(() => can({ contact: ['read'] }))
+const canReadAudit = computed(() => can({ audit: ['read'] }))
 
 interface SegmentDetail {
   id: string
@@ -144,11 +145,25 @@ async function onDelete() {
 }
 
 /** The navbar `…` menu: Delete sits there, never as a red navbar button (DESIGN.md §5). */
-const menuItems = computed<DropdownMenuItem[][]>(() =>
-  canDelete.value
-    ? [[{ label: 'Delete segment', icon: 'i-lucide-trash', color: 'error', onSelect: onDelete }]]
-    : []
-)
+const menuItems = computed<DropdownMenuItem[][]>(() => {
+  const groups: DropdownMenuItem[][] = []
+
+  if (canReadAudit.value)
+    groups.push([
+      {
+        label: 'View history',
+        icon: 'i-lucide-history',
+        to: LogLinks.audit({ entityType: 'segment', entityId: id })
+      }
+    ])
+
+  if (canDelete.value)
+    groups.push([
+      { label: 'Delete segment', icon: 'i-lucide-trash', color: 'error', onSelect: onDelete }
+    ])
+
+  return groups
+})
 
 function discard() {
   state.value = JSON.parse(baseline.value)

@@ -3,9 +3,9 @@ import { analyticsQuerySchema } from '#shared/schemas/logs'
 
 export default defineApiHandler(
   async (event, { services }): Promise<DashboardOverview> => {
-    const { range } = await getValidatedQuery(event, analyticsQuerySchema.parse)
+    const query = await getValidatedQuery(event, analyticsQuerySchema.parse)
 
-    return services.analytics.overview(range)
+    return services.analytics.overview(query)
   },
   { permission: { analytics: ['read'] } }
 )

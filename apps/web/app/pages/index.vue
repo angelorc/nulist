@@ -1,27 +1,37 @@
 <script setup lang="ts">
-import type { TabsItem } from '@nuxt/ui'
+import { z } from 'zod'
 import type { AnalyticsRange } from '#shared/types/analytics'
 import type { Kpi } from '#shared/types/domain'
+import type { RouteLocationRaw } from 'vue-router'
 import type { RateStat } from '~/components/dashboard/RateStats.vue'
+import type { DateRangeValue } from '~/utils/logLinks'
 
 definePageMeta({ permission: { analytics: ['read'] } })
 
 useSeoMeta({ title: 'Dashboard' })
 
-interface RangeOption extends TabsItem {
-  label: string
+interface RangeOption {
   value: AnalyticsRange
   /** Keyboard shortcut that selects the period. */
   key: string
 }
 
 const RANGES: RangeOption[] = [
-  { label: '7 days', value: '7d', key: '1' },
-  { label: '30 days', value: '30d', key: '2' },
-  { label: '90 days', value: '90d', key: '3' }
+  { value: '7d', key: '1' },
+  { value: '30d', key: '2' },
+  { value: '90d', key: '3' }
 ]
 
+const PRESETS = RANGES.map((r) => r.value)
+
 const DEFAULT_RANGE: AnalyticsRange = '30d'
+
+/** The period as the URL holds it: `?range=7d` for a preset, `?from=&to=` for custom days. */
+const windowQuerySchema = z.object({
+  range: z.enum(['7d', '30d', '90d']).catch(DEFAULT_RANGE),
+  from: z.iso.date().optional().catch(undefined),
+  to: z.iso.date().optional().catch(undefined)
+})
 
 const PRIMARY_KPIS = new Set(['sent', 'delivery_rate', 'open_rate', 'click_rate'])
 const SECONDARY_KPIS = new Set(['bounce_rate', 'complaint_rate', 'unsubscribes'])
@@ -35,38 +45,73 @@ const router = useRouter()
 const { organization, can } = useOrganization()
 const organizationId = computed(() => organization.value?.id ?? 'none')
 
-/** The period lives in the URL (`?range=7d`) so it survives reloads and can be shared. */
-const range = computed<AnalyticsRange>({
-  get: () => RANGES.find((r) => r.value === route.query.range)?.value ?? DEFAULT_RANGE,
-  set: (value) =>
-    router.replace({
-      query: { ...route.query, range: value === DEFAULT_RANGE ? undefined : value }
+/** The period lives in the URL so it survives reloads and can be shared; custom days win. */
+const selection = computed<DateRangeValue>({
+  get: () => {
+    const { range, from, to } = windowQuerySchema.parse(route.query)
+
+    return from && to ? { from, to } : { period: range }
+  },
+  set: (value) => {
+    const preset = PRESETS.find((r) => r === value.period)
+    const custom = value.from && value.to
+
+    void router.replace({
+      query: {
+        ...route.query,
+        range: custom || !preset || preset === DEFAULT_RANGE ? undefined : preset,
+        from: custom ? value.from : undefined,
+        to: custom ? value.to : undefined
+      }
     })
+  }
 })
 
-/** Tab values come back as strings: only a known period is applied. */
-function selectRange(value: string | number) {
-  const option = RANGES.find((r) => r.value === value)
+const overviewQuery = computed(() =>
+  selection.value.period
+    ? { range: selection.value.period }
+    : { from: selection.value.from, to: selection.value.to }
+)
 
-  if (option) range.value = option.value
-}
-
-const rangeDays = computed(() => Number.parseInt(range.value, 10))
+const overviewKey = computed(() =>
+  Object.values(overviewQuery.value)
+    .filter((value) => value !== undefined)
+    .join(':')
+)
 
 // Keyed by organization so a switch never shows the previous organization's KPIs.
 const { data, status, error, refresh } = await useFetch('/api/analytics/overview', {
-  key: () => `analytics-overview:${organizationId.value}:${range.value}`,
-  query: { range }
+  key: () => `analytics-overview:${organizationId.value}:${overviewKey.value}`,
+  query: overviewQuery
 })
+
+const comparedDays = computed(
+  () => data.value?.period.days ?? Number.parseInt(selection.value.period ?? DEFAULT_RANGE, 10)
+)
 
 const loading = computed(() => status.value === 'pending')
 
-/** Email logs filtered to what a KPI counts (only for members who can read logs). */
-const KPI_LINKS = new Map([
-  ['sent', '/logs?tab=emails'],
-  ['bounce_rate', '/logs?tab=emails&status=bounced'],
-  ['complaint_rate', '/logs?tab=emails&status=complained']
-])
+/** The reporting period as whole UTC days, so the logs cover the same days as the KPIs. */
+const logRange = computed<DateRangeValue>(() => {
+  const period = data.value?.period
+
+  if (!period) return { ...selection.value }
+
+  return {
+    from: period.start.slice(0, 10),
+    to: new Date(Date.parse(period.end) - 1).toISOString().slice(0, 10)
+  }
+})
+
+/** Email logs filtered to what a KPI counts, over the same period (only for members who can read logs). */
+const kpiLinks = computed(
+  () =>
+    new Map<string, RouteLocationRaw>([
+      ['sent', LogLinks.emails({ ...logRange.value, status: [...SENT_STATUSES] })],
+      ['bounce_rate', LogLinks.emails({ ...logRange.value, status: ['bounced'] })],
+      ['complaint_rate', LogLinks.emails({ ...logRange.value, status: ['complained'] })]
+    ])
+)
 
 const KPI_HINTS = new Map([
   [
@@ -75,7 +120,10 @@ const KPI_HINTS = new Map([
   ],
   ['delivery_rate', 'Delivered divided by sent. Requires provider delivery events (Amazon SES).'],
   ['click_rate', 'Unique clicks divided by delivered emails.'],
-  ['bounce_rate', 'Hard bounces divided by sent emails. Amazon SES reviews accounts at 5%.'],
+  [
+    'bounce_rate',
+    'Hard bounces divided by sent emails. Amazon SES reviews accounts at 5%. The linked logs list every bounced email, soft bounces included.'
+  ],
   [
     'complaint_rate',
     'Spam complaints divided by sent emails. Amazon SES reviews accounts at 0.1%; Gmail enforces 0.3%.'
@@ -84,13 +132,16 @@ const KPI_HINTS = new Map([
 ])
 
 const canReadLogs = computed(() => can({ log: ['read'] }))
+const canReadAudit = computed(() => can({ audit: ['read'] }))
+
+const insightWidgets = computed(() => (canReadLogs.value ? 2 : 0) + (canReadAudit.value ? 1 : 0))
 
 const kpis = computed(() =>
   (data.value?.kpis ?? []).map((kpi: Kpi): RateStat =>
     Object.assign({}, kpi, {
       label: kpi.key === 'open_rate' ? 'Open rate (est.)' : kpi.label,
       hint: KPI_HINTS.get(kpi.key),
-      to: canReadLogs.value ? KPI_LINKS.get(kpi.key) : undefined
+      to: canReadLogs.value ? kpiLinks.value.get(kpi.key) : undefined
     })
   )
 )
@@ -119,7 +170,7 @@ defineShortcuts(
     RANGES.map((option) => [
       option.key,
       () => {
-        range.value = option.value
+        selection.value = { period: option.value }
       }
     ])
   )
@@ -142,21 +193,18 @@ defineShortcuts(
 
       <UDashboardToolbar>
         <template #left>
-          <UTooltip text="Reporting period" :kbds="RANGES.map((r) => r.key)">
-            <UTabs
-              :model-value="range"
-              :items="RANGES"
-              :content="false"
-              size="xs"
-              color="neutral"
-              aria-label="Reporting period"
-              @update:model-value="selectRange"
-            />
-          </UTooltip>
+          <DateRangePicker
+            v-model="selection"
+            :presets="PRESETS"
+            :default-period="DEFAULT_RANGE"
+            :tooltip="{ text: 'Reporting period', kbds: RANGES.map((r) => r.key) }"
+            align="start"
+            size="sm"
+          />
         </template>
         <template #right>
           <p class="hidden sm:block text-[13px] text-muted">
-            Compared with the previous {{ rangeDays }} days
+            Compared with the previous {{ comparedDays }} days
           </p>
         </template>
       </UDashboardToolbar>
@@ -215,6 +263,18 @@ defineShortcuts(
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 shrink-0">
           <DashboardActivityChart :series="data.series" :loading="loading" class="lg:col-span-2" />
           <DashboardHealthCard :health="data.health" />
+        </div>
+
+        <div
+          v-if="insightWidgets"
+          class="grid grid-cols-1 gap-4 sm:gap-6 shrink-0"
+          :class="insightWidgets > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'"
+        >
+          <template v-if="canReadLogs">
+            <DashboardPipelineHealth :range="selection" />
+            <DashboardDeliveryIssues :range="selection" />
+          </template>
+          <DashboardRecentActivity v-if="canReadAudit" :range="selection" />
         </div>
 
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 shrink-0">

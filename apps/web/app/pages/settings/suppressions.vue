@@ -15,6 +15,7 @@ useSeoMeta({ title: 'Suppressions' })
 const { can } = useOrganization()
 const canAdd = computed(() => can({ suppression: ['create'] }))
 const canRemove = computed(() => can({ suppression: ['delete'] }))
+const canReadLogs = computed(() => can({ log: ['read'] }))
 const ADD_DENIED = "You don't have permission to suppress addresses"
 
 type SuppressionFilters = { reason: string | undefined }
@@ -137,20 +138,48 @@ async function onRemove(row: SuppressionRow) {
 // ---------------------------------------------------------------------------
 // Table
 // ---------------------------------------------------------------------------
-/** Row menu: lifting the block, in its own destructive group. */
+const PROVIDER_EVENT = new Map<SuppressionReason, string>([
+  ['hard_bounce', 'Bounce'],
+  ['soft_bounce', 'Bounce'],
+  ['complaint', 'Complaint']
+])
+
+/** Row menu: the address's emails and provider events, then lifting the block in its own destructive group. */
 function rowActions(row: SuppressionRow): DropdownMenuItem[][] {
-  return canRemove.value
-    ? [
-        [
-          {
-            label: 'Remove from list',
-            icon: 'i-lucide-trash',
-            color: 'error',
-            onSelect: () => onRemove(row)
-          }
-        ]
-      ]
-    : []
+  const groups: DropdownMenuItem[][] = []
+
+  if (canReadLogs.value) {
+    const logs: DropdownMenuItem[] = [
+      {
+        label: 'View emails',
+        icon: 'i-lucide-scroll-text',
+        to: LogLinks.emails({ recipient: row.email })
+      }
+    ]
+
+    const eventType = PROVIDER_EVENT.get(row.reason)
+
+    if (eventType)
+      logs.push({
+        label: `View ${eventType.toLowerCase()} events`,
+        icon: 'i-lucide-webhook',
+        to: LogLinks.events({ eventType: [eventType], recipient: row.email })
+      })
+
+    groups.push(logs)
+  }
+
+  if (canRemove.value)
+    groups.push([
+      {
+        label: 'Remove from list',
+        icon: 'i-lucide-trash',
+        color: 'error',
+        onSelect: () => onRemove(row)
+      }
+    ])
+
+  return groups
 }
 
 const UBadge = resolveComponent('UBadge')
@@ -214,7 +243,7 @@ const columns = computed<TableColumn<SuppressionRow>[]>(() => [
     },
     cell: ({ row }) => h(TimeAgo, { date: row.original.createdAt })
   },
-  ...(canRemove.value
+  ...(canRemove.value || canReadLogs.value
     ? [rowActionsColumn({ items: rowActions, label: (row) => `Actions for ${row.email}` })]
     : [])
 ])

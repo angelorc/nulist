@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TransactionalOverview, TransactionalWindow } from '#shared/schemas/transactional'
+import type { MessageStatus } from '#shared/types/domain'
 
 definePageMeta({ permission: { transactional: ['read'] } })
 
@@ -15,7 +16,10 @@ const canCreateTemplate = computed(() => can({ template: ['create'] }))
 const canReadLogs = computed(() => can({ log: ['read'] }))
 
 /** Email logs matching a KPI, for members who may read them (the cards are not links otherwise). */
-const logsUrl = (query: string) => (canReadLogs.value ? `/logs?${query}` : undefined)
+const logsUrl = (status?: MessageStatus[]) =>
+  canReadLogs.value
+    ? LogLinks.emails({ kind: ['transactional'], status, period: '24h' })
+    : undefined
 
 // Lazy: navigation is instant and skeletons cover the first load; background refreshes keep the data on screen.
 const { data, status, error, refresh } = useFetch<TransactionalOverview>(
@@ -48,17 +52,17 @@ const kpis = computed(() => {
       previous: before?.sent,
       format: 'number' as const,
       higherIsBetter: true,
-      to: logsUrl('tab=emails&kind=transactional&period=24h'),
+      to: logsUrl(['sent', 'delivered', 'delayed', 'bounced', 'complained']),
       hint: 'Emails handed to the provider in the last 24 hours.'
     },
     {
       key: 'delivered',
-      label: 'Delivered',
+      label: 'Delivered (24h)',
       value: now && deliveredRate(now),
       previous: before && deliveredRate(before),
       format: 'percent' as const,
       higherIsBetter: true,
-      to: logsUrl('tab=emails&kind=transactional&status=delivered&period=24h'),
+      to: logsUrl(['delivered']),
       hint: 'Delivered divided by sent. Requires provider delivery events (Amazon SES).'
     },
     {
@@ -68,7 +72,7 @@ const kpis = computed(() => {
       previous: before?.bounced,
       format: 'number' as const,
       higherIsBetter: false,
-      to: logsUrl('tab=emails&kind=transactional&status=bounced&period=24h'),
+      to: logsUrl(['bounced']),
       hint: undefined
     },
     {
@@ -78,7 +82,7 @@ const kpis = computed(() => {
       previous: before?.failed,
       format: 'number' as const,
       higherIsBetter: false,
-      to: logsUrl('tab=emails&kind=transactional&status=failed&period=24h'),
+      to: logsUrl(['failed', 'rejected']),
       hint: 'Rejected by the provider or failed after every retry.'
     }
   ]
@@ -198,7 +202,7 @@ defineShortcuts(
               variant="ghost"
               size="sm"
               trailing-icon="i-lucide-arrow-right"
-              to="/logs?tab=api"
+              :to="LogLinks.api(data?.api.total ? { period: '24h' } : {})"
             />
           </template>
           <div class="px-4 pb-4 space-y-3">

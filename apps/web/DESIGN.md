@@ -169,6 +169,12 @@ look below. Semantic colors and tokens only (`text-muted`, `bg-elevated`, `borde
 - Search: `UInput` with `icon="i-lucide-search"`, an `aria-label`, `class="w-full sm:w-64"`.
   Filters: `USelect` / `USelectMenu` with `aria-label` and `placeholder="All …"`. Filters,
   search and "Clear filters" live in the toolbar, not in the body.
+- Log-style pages with many filters (Logs, Audit log) use facets instead: a resizable
+  `FacetsPanel` beside the main panel (a slideover below `lg`, opened by `FacetsButton`) holds
+  search and `FacetsGroup` lists with disjunctive counts; the main toolbar keeps the view tabs,
+  `DateRangePicker` and refresh.
+- Dates: any view filtered by time uses `DateRangePicker` (presets plus a `UCalendar` range),
+  stored in the URL as `period` or `from`/`to`.
 - Status / section tabs in a toolbar: `<UTabs size="sm" :content="false">` (pill, as in the
   Nuxt UI dashboard template). Route sections in a toolbar: `<UNavigationMenu highlight
   class="-mx-1 flex-1">`. Never add `overflow-*` or negative margins to tabs/menus inside
