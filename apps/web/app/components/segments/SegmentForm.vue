@@ -17,7 +17,7 @@ export interface SegmentFormState {
  * state and the submit button (`form="<id>"`). `readonly` shows the
  * segment without editing controls (members without segment:update).
  */
-const props = defineProps<{ id: string; readonly?: boolean }>()
+const props = defineProps<{ id: string; readonly?: boolean; segmentId?: string }>()
 const state = defineModel<SegmentFormState>('state', { required: true })
 const emit = defineEmits<{ submit: [data: SegmentInput] }>()
 
@@ -89,7 +89,12 @@ defineExpose({ submit: () => form.value?.submit() })
             Membership is evaluated live, so the segment stays up to date as contacts change.
           </p>
         </div>
-        <SegmentsSegmentRuleBuilder v-model="state.rules" name="rules" :readonly="readonly" />
+        <SegmentsSegmentRuleBuilder
+          v-model="state.rules"
+          name="rules"
+          :readonly="readonly"
+          :segment-id="segmentId"
+        />
       </section>
     </div>
 

@@ -8,6 +8,10 @@ import { NotFoundError, ValidationError } from '../core/errors'
 import type { TenantScope } from '../core/TenantScope'
 import type { AudienceResolver } from '../segments/AudienceResolver'
 
+function excludedSegments(audience: AudienceDefinition): string[] {
+  return audience.excludeSegmentIds ?? []
+}
+
 /** The list and segment ids of an audience that belong to the organization. */
 interface OwnedSources {
   lists: ReadonlySet<string>
@@ -33,7 +37,8 @@ export class BroadcastAudience {
     return {
       listIds: audience.listIds.filter((id) => owned.lists.has(id)),
       segmentIds: audience.segmentIds.filter((id) => owned.segments.has(id)),
-      excludeListIds: audience.excludeListIds.filter((id) => owned.lists.has(id))
+      excludeListIds: audience.excludeListIds.filter((id) => owned.lists.has(id)),
+      excludeSegmentIds: excludedSegments(audience).filter((id) => owned.segments.has(id))
     }
   }
 
@@ -48,7 +53,10 @@ export class BroadcastAudience {
     const added: AudienceDefinition = {
       listIds: audience.listIds.filter((id) => !stored.listIds.includes(id)),
       segmentIds: audience.segmentIds.filter((id) => !stored.segmentIds.includes(id)),
-      excludeListIds: audience.excludeListIds.filter((id) => !stored.excludeListIds.includes(id))
+      excludeListIds: audience.excludeListIds.filter((id) => !stored.excludeListIds.includes(id)),
+      excludeSegmentIds: excludedSegments(audience).filter(
+        (id) => !excludedSegments(stored).includes(id)
+      )
     }
 
     const owned = await this.owned(added)
@@ -57,7 +65,9 @@ export class BroadcastAudience {
     if (listIds.some((id) => !owned.lists.has(id)))
       throw new ValidationError('A selected list no longer exists.', { field: 'audience' })
 
-    if (added.segmentIds.some((id) => !owned.segments.has(id)))
+    const segmentIds = [...added.segmentIds, ...added.excludeSegmentIds]
+
+    if (segmentIds.some((id) => !owned.segments.has(id)))
       throw new ValidationError('A selected segment no longer exists.', { field: 'audience' })
   }
 
@@ -100,7 +110,7 @@ export class BroadcastAudience {
 
   private async owned(audience: AudienceDefinition): Promise<OwnedSources> {
     const listIds = [...new Set([...audience.listIds, ...audience.excludeListIds])]
-    const segmentIds = [...new Set(audience.segmentIds)]
+    const segmentIds = [...new Set([...audience.segmentIds, ...excludedSegments(audience)])]
 
     const [listRows, segmentRows] = await Promise.all([
       listIds.length

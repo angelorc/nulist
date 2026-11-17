@@ -49,11 +49,18 @@ const audience = computed(() => {
         label: name(segments.value, id, 'Deleted segment')
       }))
     ],
-    exclude: a.excludeListIds.map((id) => ({
-      id,
-      icon: 'i-lucide-list-x',
-      label: name(lists.value, id, 'Deleted list')
-    }))
+    exclude: [
+      ...a.excludeListIds.map((id) => ({
+        id,
+        icon: 'i-lucide-list-x',
+        label: name(lists.value, id, 'Deleted list')
+      })),
+      ...a.excludeSegmentIds.map((id) => ({
+        id,
+        icon: 'i-lucide-filter-x',
+        label: name(segments.value, id, 'Deleted segment')
+      }))
+    ]
   }
 })
 

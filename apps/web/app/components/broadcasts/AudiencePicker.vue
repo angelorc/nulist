@@ -8,7 +8,7 @@ import type { AudienceDefinition } from '#shared/types/domain'
 
 /**
  * "To" field of the composer: lists and segments as removable chips, an optional
- * "Except" row for excluded lists and a live, debounced recipient estimate.
+ * "Except" row for excluded lists and segments and a live, debounced recipient estimate.
  */
 const props = defineProps<{
   lists: AudienceListOption[]
@@ -30,60 +30,72 @@ interface SourceItem {
   count: number | null
 }
 
-const listItems = computed<SourceItem[]>(() =>
-  props.lists.map((l) => ({
-    label: l.name,
-    value: `list:${l.id}`,
-    icon: 'i-lucide-list',
-    count: l.confirmedCount
-  }))
-)
+interface SourceIcons {
+  list: string
+  segment: string
+}
 
-const segmentItems = computed<SourceItem[]>(() =>
-  props.segments.map((s) => ({
-    label: s.name,
-    value: `segment:${s.id}`,
-    icon: 'i-lucide-filter',
-    count: s.contactCount
-  }))
-)
+const SOURCE_ICONS: SourceIcons = { list: 'i-lucide-list', segment: 'i-lucide-filter' }
+const EXCLUDE_ICONS: SourceIcons = { list: 'i-lucide-list-x', segment: 'i-lucide-filter-x' }
 
-const sourceItems = computed<SourceItem[]>(() => [
-  ...(listItems.value.length
-    ? [{ type: 'label' as const, label: 'Lists', count: null }, ...listItems.value]
-    : []),
-  ...(segmentItems.value.length
-    ? [{ type: 'label' as const, label: 'Segments', count: null }, ...segmentItems.value]
-    : [])
-])
+function group(label: string, items: SourceItem[]): SourceItem[] {
+  return items.length ? [{ type: 'label', label, count: null }, ...items] : []
+}
 
-const excludeItems = computed<SourceItem[]>(() =>
-  props.lists.map((l) => ({
-    label: l.name,
-    value: l.id,
-    icon: 'i-lucide-list-x',
-    count: l.confirmedCount
-  }))
-)
+function sourceItemsWith(icons: SourceIcons): SourceItem[] {
+  return [
+    ...group(
+      'Lists',
+      props.lists.map((l) => ({
+        label: l.name,
+        value: `list:${l.id}`,
+        icon: icons.list,
+        count: l.confirmedCount
+      }))
+    ),
+    ...group(
+      'Segments',
+      props.segments.map((s) => ({
+        label: s.name,
+        value: `segment:${s.id}`,
+        icon: icons.segment,
+        count: s.contactCount
+      }))
+    )
+  ]
+}
+
+function idsWithPrefix(keys: string[], prefix: string): string[] {
+  return keys.flatMap((k) => (k.startsWith(prefix) ? [k.slice(prefix.length)] : []))
+}
+
+function toKeys(listIds: string[], segmentIds: string[]): string[] {
+  return [...listIds.map((id) => `list:${id}`), ...segmentIds.map((id) => `segment:${id}`)]
+}
+
+const sourceItems = computed(() => sourceItemsWith(SOURCE_ICONS))
+
+const excludeItems = computed(() => sourceItemsWith(EXCLUDE_ICONS))
 
 const selectedKeys = computed<string[]>({
-  get: () => [
-    ...audience.value.listIds.map((id) => `list:${id}`),
-    ...audience.value.segmentIds.map((id) => `segment:${id}`)
-  ],
+  get: () => toKeys(audience.value.listIds, audience.value.segmentIds),
   set: (keys) => {
     audience.value = {
       ...audience.value,
-      listIds: keys.filter((k) => k.startsWith('list:')).map((k) => k.slice(5)),
-      segmentIds: keys.filter((k) => k.startsWith('segment:')).map((k) => k.slice(8))
+      listIds: idsWithPrefix(keys, 'list:'),
+      segmentIds: idsWithPrefix(keys, 'segment:')
     }
   }
 })
 
-const excluded = computed<string[]>({
-  get: () => audience.value.excludeListIds,
-  set: (ids) => {
-    audience.value = { ...audience.value, excludeListIds: ids }
+const excludedKeys = computed<string[]>({
+  get: () => toKeys(audience.value.excludeListIds, audience.value.excludeSegmentIds),
+  set: (keys) => {
+    audience.value = {
+      ...audience.value,
+      excludeListIds: idsWithPrefix(keys, 'list:'),
+      excludeSegmentIds: idsWithPrefix(keys, 'segment:')
+    }
   }
 })
 
@@ -110,15 +122,28 @@ const chips = computed(() => [
   })
 ])
 
-const excludedChips = computed(() =>
-  audience.value.excludeListIds.map((id) => {
+const excludedChips = computed(() => [
+  ...audience.value.excludeListIds.map((id) => {
     const list = props.lists.find((l) => l.id === id)
 
-    return { key: id, label: list?.name ?? (props.loading ? 'Loading…' : 'Deleted list') }
-  })
-)
+    return {
+      key: `list:${id}`,
+      icon: EXCLUDE_ICONS.list,
+      label: list?.name ?? (props.loading ? 'Loading…' : 'Deleted list')
+    }
+  }),
+  ...audience.value.excludeSegmentIds.map((id) => {
+    const segment = props.segments.find((s) => s.id === id)
 
-const showExclude = ref(audience.value.excludeListIds.length > 0)
+    return {
+      key: `segment:${id}`,
+      icon: EXCLUDE_ICONS.segment,
+      label: segment?.name ?? (props.loading ? 'Loading…' : 'Deleted segment')
+    }
+  })
+])
+
+const showExclude = ref(excludedKeys.value.length > 0)
 
 /** Audience chips: 28px tall, 13px text, room for the remove button. */
 const chipUi = computed(() => ({
@@ -130,8 +155,8 @@ function removeSource(key: string) {
   selectedKeys.value = selectedKeys.value.filter((k) => k !== key)
 }
 
-function removeExcluded(id: string) {
-  excluded.value = excluded.value.filter((e) => e !== id)
+function removeExcluded(key: string) {
+  excludedKeys.value = excludedKeys.value.filter((k) => k !== key)
 }
 
 // Live estimate ---------------------------------------------------------------
@@ -238,8 +263,8 @@ onMounted(loadEstimate)
       </USelectMenu>
 
       <UButton
-        v-if="!disabled && !showExclude && lists.length"
-        label="Exclude lists"
+        v-if="!disabled && !showExclude && (lists.length || segments.length)"
+        label="Exclude"
         icon="i-lucide-list-x"
         size="sm"
         variant="ghost"
@@ -253,7 +278,7 @@ onMounted(loadEstimate)
       <UBadge
         v-for="chip in excludedChips"
         :key="chip.key"
-        icon="i-lucide-list-x"
+        :icon="chip.icon"
         variant="outline"
         size="lg"
         class="max-w-full"
@@ -273,19 +298,25 @@ onMounted(loadEstimate)
       </UBadge>
       <USelectMenu
         v-if="!disabled"
-        v-model="excluded"
+        v-model="excludedKeys"
         :items="excludeItems"
         value-key="value"
         multiple
         icon="i-lucide-plus"
         variant="ghost"
         size="sm"
-        :search-input="{ placeholder: 'Search lists…', icon: 'i-lucide-search' }"
+        :loading="loading"
+        :search-input="{ placeholder: 'Search lists and segments…', icon: 'i-lucide-search' }"
         :content="{ align: 'start' }"
-        :ui="{ base: 'w-auto text-muted', content: 'min-w-64' }"
-        aria-label="Exclude lists"
+        :ui="{ base: 'w-auto text-muted', content: 'min-w-72' }"
+        aria-label="Exclude lists or segments"
       >
-        <span>{{ excludedChips.length ? 'Add' : 'Choose lists' }}</span>
+        <span>{{ excludedChips.length ? 'Add' : 'Choose lists or segments' }}</span>
+        <template #item-trailing="{ item }">
+          <span v-if="item.count !== null" class="text-xs text-muted tabular-nums">
+            {{ number(item.count) }}
+          </span>
+        </template>
       </USelectMenu>
     </div>
 

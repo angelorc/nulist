@@ -5,8 +5,8 @@
  *   the "Default" organization (slug `default`) when it is missing, and the admin's
  *   owner membership in it.
  * - Inserts into that organization: lists, topics, ~800 contacts, templates, three sent
- *   broadcasts with realistic provider events, ~350 transactional/system emails,
- *   suppressions, SNS notifications and API request logs. Recipients use reserved
+ *   broadcasts with realistic provider events and a draft, ~350 transactional/system emails,
+ *   segments, suppressions, SNS notifications and API request logs. Recipients use reserved
  *   `.example` domains, so nothing can reach a real inbox.
  * - Idempotent: skipped when the organization already has the "Newsletter (demo)" list.
  *
@@ -29,6 +29,7 @@ import type {
   JsonObject,
   MessageKind,
   MessageStatus,
+  SegmentRules,
   SuppressionReason
 } from '../shared/types/domain'
 
@@ -487,6 +488,22 @@ const WELCOME_MJML = `<mjml>
     </mj-section>
   </mj-body>
 </mjml>`
+
+function segment(
+  id: string,
+  name: string,
+  description: string,
+  rules: SegmentRules
+): TenantRow<typeof schema.segments> {
+  return {
+    id,
+    name,
+    description,
+    rules,
+    createdAt: at(NOW - 30 * DAY),
+    updatedAt: at(NOW - 30 * DAY)
+  }
+}
 
 async function compile(mjml: string): Promise<string> {
   const result = await mjml2html(mjml, { validationLevel: 'soft', keepComments: false })
@@ -1048,7 +1065,15 @@ class DemoSeeder {
       beta: uuidv7(NOW - 89 * DAY + 2)
     },
     topics: { product: uuidv7(NOW - 89 * DAY + 3), events: uuidv7(NOW - 89 * DAY + 4) },
-    templates: { newsletter: uuidv7(NOW - 70 * DAY), welcome: uuidv7(NOW - 75 * DAY) }
+    templates: { newsletter: uuidv7(NOW - 70 * DAY), welcome: uuidv7(NOW - 75 * DAY) },
+    segments: {
+      engaged: uuidv7(NOW - 30 * DAY),
+      september: uuidv7(NOW - 30 * DAY + 1),
+      dormant: uuidv7(NOW - 30 * DAY + 2),
+      customers: uuidv7(NOW - 30 * DAY + 3),
+      active: uuidv7(NOW - 30 * DAY + 4)
+    },
+    draft: uuidv7(NOW - 1 * DAY)
   }
 
   private readonly scope: TenantScope
@@ -1204,7 +1229,10 @@ class DemoSeeder {
           }
         ])
       )
-      await db.insert(schema.broadcasts).values(scope.valuesMany(broadcasts))
+      await db
+        .insert(schema.broadcasts)
+        .values(scope.valuesMany([...broadcasts, this.draftBroadcast()]))
+      await db.insert(schema.segments).values(scope.valuesMany(this.buildSegments(broadcasts)))
       await insertChunks(db, schema.messages, scope.valuesMany(this.messages), 400)
       await insertChunks(db, schema.emailEvents, scope.valuesMany(this.sim.events))
       await insertChunks(db, schema.suppressions, scope.valuesMany([...this.suppressions.values()]))
@@ -1219,7 +1247,8 @@ class DemoSeeder {
       [
         'Demo data created:',
         `  ${this.contacts.length} contacts, ${this.subscriptions.length} list memberships`,
-        `  ${broadcasts.length} broadcasts, ${this.messages.length} emails, ${this.sim.events.length} provider events`,
+        `  ${broadcasts.length + 1} broadcasts, ${this.messages.length} emails, ${this.sim.events.length} provider events`,
+        `  ${Object.keys(this.ids.segments).length} segments`,
         `  ${this.suppressions.size} suppressions, ${inbound.length} SNS notifications, ${apiLogs.length} API requests`,
         (auditRows?.value ?? 0) === 0 ? '  audit log entries' : '  audit log skipped (not empty)',
         `Organization: "${organization.name}" (${organization.id})`,
@@ -1589,7 +1618,7 @@ class DemoSeeder {
       replyTo: 'hello@acme.test',
       templateId: this.ids.templates.newsletter,
       topicId: plan.list === 'product' ? this.ids.topics.product : null,
-      audience: { listIds: [listId], segmentIds: [], excludeListIds: [] },
+      audience: { listIds: [listId], segmentIds: [], excludeListIds: [], excludeSegmentIds: [] },
       utm: { enabled: false },
       status: 'sent',
       startedAt: at(start),
@@ -1599,6 +1628,151 @@ class DemoSeeder {
       createdAt: at(start - 2 * DAY),
       updatedAt: completedAt
     }
+  }
+
+  private draftBroadcast(): BroadcastInsert {
+    return {
+      id: this.ids.draft,
+      name: 'December newsletter',
+      subject: 'What we are shipping before the holidays',
+      preheader: 'A short note for readers who still open our emails.',
+      fromName: COMPANY.name,
+      fromEmail: 'news@acme.test',
+      replyTo: 'hello@acme.test',
+      templateId: this.ids.templates.newsletter,
+      audience: {
+        listIds: [this.ids.lists.newsletter],
+        segmentIds: [],
+        excludeListIds: [],
+        excludeSegmentIds: [this.ids.segments.dormant]
+      },
+      utm: { enabled: false },
+      status: 'draft',
+      createdAt: at(NOW - 1 * DAY),
+      updatedAt: at(NOW - 1 * DAY)
+    }
+  }
+
+  private buildSegments(broadcasts: BroadcastInsert[]): TenantRow<typeof schema.segments>[] {
+    const september = broadcasts.find((b) => b.name === BROADCASTS[0]?.name)?.id ?? null
+    const ids = this.ids.segments
+
+    return [
+      segment(
+        ids.engaged,
+        'Engaged paying users',
+        'Opened an email recently and pays for a plan.',
+        {
+          match: 'all',
+          conditions: [
+            {
+              field: 'activity',
+              operator: 'has',
+              event: 'opened',
+              scope: 'any',
+              times: 1,
+              days: 30
+            },
+            {
+              match: 'any',
+              conditions: [
+                { field: 'attribute', operator: 'eq', key: 'plan', value: 'pro' },
+                { field: 'attribute', operator: 'eq', key: 'plan', value: 'team' },
+                { field: 'attribute', operator: 'eq', key: 'plan', value: 'enterprise' }
+              ]
+            }
+          ]
+        }
+      ),
+      segment(
+        ids.september,
+        'Opened September, no click',
+        'Read the September newsletter without clicking any of its links.',
+        {
+          match: 'all',
+          conditions: [
+            {
+              field: 'activity',
+              operator: 'has',
+              event: 'opened',
+              scope: 'broadcast',
+              broadcastId: september,
+              times: 1,
+              days: null
+            },
+            {
+              match: 'none',
+              conditions: [
+                {
+                  field: 'activity',
+                  operator: 'has',
+                  event: 'clicked',
+                  scope: 'broadcast',
+                  broadcastId: september,
+                  times: 1,
+                  days: null
+                }
+              ]
+            }
+          ]
+        }
+      ),
+      segment(
+        ids.dormant,
+        'Dormant subscribers',
+        'Newsletter subscribers sent two or more broadcasts in 90 days without opening any.',
+        {
+          match: 'all',
+          conditions: [
+            { field: 'list', operator: 'in_list', value: this.ids.lists.newsletter },
+            {
+              field: 'activity',
+              operator: 'has',
+              event: 'sent',
+              scope: 'broadcast',
+              broadcastId: null,
+              times: 2,
+              days: 90
+            },
+            {
+              field: 'activity',
+              operator: 'has_not',
+              event: 'opened',
+              scope: 'broadcast',
+              broadcastId: null,
+              days: 90
+            }
+          ]
+        }
+      ),
+      segment(ids.customers, 'Billed customers', 'Received a billing email.', {
+        match: 'all',
+        conditions: [
+          {
+            field: 'activity',
+            operator: 'has',
+            event: 'delivered',
+            scope: 'transactional',
+            templateId: null,
+            tag: { key: 'category', value: 'billing' },
+            times: 1,
+            days: null
+          }
+        ]
+      }),
+      segment(
+        ids.active,
+        'Active newsletter readers',
+        'Newsletter subscribers who are not dormant.',
+        {
+          match: 'all',
+          conditions: [
+            { field: 'list', operator: 'in_list', value: this.ids.lists.newsletter },
+            { field: 'segment', operator: 'not_in_segment', value: ids.dormant }
+          ]
+        }
+      )
+    ]
   }
 
   // Transactional & system -----------------------------------------------------

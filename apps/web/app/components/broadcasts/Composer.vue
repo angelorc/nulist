@@ -61,7 +61,8 @@ function toDraft(b: BroadcastDetail): DraftState {
     audience: {
       listIds: [...b.audience.listIds],
       segmentIds: [...b.audience.segmentIds],
-      excludeListIds: [...b.audience.excludeListIds]
+      excludeListIds: [...b.audience.excludeListIds],
+      excludeSegmentIds: [...b.audience.excludeSegmentIds]
     },
     utm: {
       enabled: b.utm.enabled,

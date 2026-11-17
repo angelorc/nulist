@@ -2,15 +2,14 @@ import { eq, ne } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { contacts } from '../../../db/schema'
 import { contactStatusSchema } from '../../../../shared/schemas/contacts'
-import type { SegmentCondition } from '../../../../shared/types/domain'
-import type { ConditionCompiler } from './ConditionCompiler'
-import { UnsupportedConditionError } from './ConditionCompiler'
+import type { SegmentFieldCondition } from '../../../../shared/types/domain'
+import { FieldConditionCompiler, UnsupportedConditionError } from './ConditionCompiler'
 
 /** `status is / is not <enum value>`. */
-export class StatusFieldCompiler implements ConditionCompiler {
+export class StatusFieldCompiler extends FieldConditionCompiler {
   readonly type = 'enum' as const
 
-  compile(condition: SegmentCondition): SQL {
+  protected compileField(condition: SegmentFieldCondition): SQL {
     const status = contactStatusSchema.safeParse(condition.value)
 
     if (condition.field !== 'status' || !status.success)

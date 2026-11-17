@@ -68,7 +68,8 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-06-30',
 
   nitro: {
-    experimental: { asyncContext: true },
+    experimental: { asyncContext: true, tasks: true },
+    scheduledTasks: { '*/5 * * * *': ['segments:sync'], '* * * * *': ['webhooks:sweep'] },
     externals: { traceInclude: [workflowWorldEntry] },
     // Read by @workflow/nitro: only scan our workflow directory for directives.
     ...workflowNitroOptions

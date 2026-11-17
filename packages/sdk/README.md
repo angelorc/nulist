@@ -67,6 +67,7 @@ Every method also takes per-call `RequestOptions`: extra `headers` and an abort 
 | `nulist.batch`      | `send` — up to 100 emails in one request, all or nothing      |
 | `nulist.contacts`   | `create`, `get`, `list`, `update`, `remove`, `unsubscribe`    |
 | `nulist.lists`      | `create`, `get`, `list`, `update`, `remove`                   |
+| `nulist.segments`   | `get`, `list`, `listContacts`                                 |
 | `nulist.broadcasts` | `create`, `get`, `list`, `update`, `remove`, `send`, `cancel` |
 | `nulist.templates`  | `create`, `get`, `list`, `update`, `remove`                   |
 

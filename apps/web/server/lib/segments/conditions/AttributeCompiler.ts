@@ -2,9 +2,13 @@ import { sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { contacts } from '../../../db/schema'
 import { ATTRIBUTE_KEY_PATTERN } from '../../../../shared/schemas/segments'
-import type { SegmentCondition } from '../../../../shared/types/domain'
-import type { ConditionCompiler } from './ConditionCompiler'
-import { UnsupportedConditionError, asNumber, asText } from './ConditionCompiler'
+import type { SegmentFieldCondition } from '../../../../shared/types/domain'
+import {
+  FieldConditionCompiler,
+  UnsupportedConditionError,
+  asNumber,
+  asText
+} from './ConditionCompiler'
 import { TextMatcher } from './TextMatcher'
 
 /** Strict decimal literal; checked before casting so non-numeric values never raise. Bound as a parameter. */
@@ -14,10 +18,10 @@ const NUMERIC_PATTERN = '^[-+]?([0-9]+([.][0-9]*)?|[.][0-9]+)$'
  * Custom attributes stored in `contacts.attributes` (jsonb). The key is always
  * a bound parameter (`attributes ->> $1`), never part of the SQL text.
  */
-export class AttributeCompiler implements ConditionCompiler {
+export class AttributeCompiler extends FieldConditionCompiler {
   readonly type = 'attribute' as const
 
-  compile(condition: SegmentCondition): SQL {
+  protected compileField(condition: SegmentFieldCondition): SQL {
     const key = condition.key ?? ''
 
     if (!ATTRIBUTE_KEY_PATTERN.test(key)) throw new UnsupportedConditionError(condition)

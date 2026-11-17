@@ -20,7 +20,12 @@ import { listInputSchema } from '../../shared/schemas/lists'
 import { templateCreateSchema } from '../../shared/schemas/templates'
 import { transactionalEmailSchema } from '../../shared/schemas/transactional'
 import type { DeliveryResult } from '../../server/lib/transactional/TransactionalService'
-import type { LimitSettings } from '../../shared/types/domain'
+import type {
+  EmailEventType,
+  JsonObject,
+  LimitSettings,
+  MessageKind
+} from '../../shared/types/domain'
 import { TEST_DATABASE_URL } from './database'
 import { RecordingEmailProvider } from './RecordingEmailProvider'
 
@@ -29,6 +34,23 @@ export type BroadcastDraft = z.input<typeof broadcastCreateSchema>
 
 /** Public base URL of recipient links in tests. */
 export const TEST_APP_URL = 'http://nulist.test'
+
+const DAY_MS = 86_400_000
+
+export interface EmailEventFixture {
+  type: EmailEventType
+  daysAgo?: number
+  data?: JsonObject
+}
+
+export interface EmailActivityFixture {
+  contactId: string
+  kind: MessageKind
+  broadcastId?: string
+  templateId?: string
+  tags?: Record<string, string>
+  events: EmailEventFixture[]
+}
 
 /** Instance-wide secrets and defaults of the test platform (never the dev ones). */
 const TEST_CONFIG: AppConfig = {
@@ -152,6 +174,39 @@ export class TestOrganization {
     }
 
     throw new Error('The broadcast did not finish sending')
+  }
+
+  async emailActivity(fixture: EmailActivityFixture): Promise<void> {
+    const { db } = this.platform
+
+    const [message] = await db
+      .insert(schema.messages)
+      .values({
+        organizationId: this.id,
+        kind: fixture.kind,
+        contactId: fixture.contactId,
+        broadcastId: fixture.broadcastId,
+        templateId: fixture.templateId,
+        tags: fixture.tags ?? {},
+        toEmail: 'recipient@example.test',
+        fromEmail: 'news@example.test',
+        subject: 'Hello',
+        status: 'delivered'
+      })
+      .returning({ id: schema.messages.id })
+
+    if (!message) throw new Error('Could not store the message')
+    await db.insert(schema.emailEvents).values(
+      fixture.events.map((event) => ({
+        organizationId: this.id,
+        messageId: message.id,
+        contactId: fixture.contactId,
+        broadcastId: fixture.broadcastId,
+        type: event.type,
+        occurredAt: new Date(Date.now() - (event.daysAgo ?? 0) * DAY_MS),
+        data: event.data ?? {}
+      }))
+    )
   }
 
   /** Recipient emails of a broadcast (one message each), sorted. */

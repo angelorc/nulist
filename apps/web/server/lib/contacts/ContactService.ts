@@ -15,6 +15,7 @@ import { ConflictError, InvalidStateError, NotFoundError, ValidationError } from
 import type { JobLauncher } from '../core/jobs'
 import { Page } from '../core/pagination'
 import type { LimitService } from '../limits/LimitService'
+import type { SegmentMembershipService } from '../segments/SegmentMembershipService'
 import type { ContactVariables } from '../templates/TemplateRenderer'
 import type { WebhookDispatcher } from '../webhooks/WebhookDispatcher'
 import { SuppressionService } from './SuppressionService'
@@ -136,7 +137,8 @@ export class ContactService {
     protected readonly limits: LimitService,
     protected readonly webhooks: WebhookDispatcher,
     protected readonly jobs: JobLauncher,
-    protected readonly suppressions: SuppressionService
+    protected readonly suppressions: SuppressionService,
+    protected readonly segmentMemberships: SegmentMembershipService
   ) {
     this.activityReader = new ContactActivityReader(scope, db)
     this.exporter = new ContactExporter(scope, db)
@@ -172,6 +174,21 @@ export class ContactService {
       await this.webhooks.dispatch(type, data)
     } catch (error) {
       console.error(`[contacts] failed to dispatch ${type} webhook`, error)
+    }
+  }
+
+  protected async deleteContacts(ids: string[]): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await this.segmentMemberships.exitContacts(tx, ids)
+      await tx
+        .delete(contacts)
+        .where(and(this.scope.eq(contacts.organizationId), inArray(contacts.id, ids)))
+    })
+
+    try {
+      await this.webhooks.wake()
+    } catch (error) {
+      console.error('[contacts] failed to wake webhook deliveries', error)
     }
   }
 
@@ -535,9 +552,7 @@ export class ContactService {
 
   async delete(id: string, actor: Actor): Promise<void> {
     const contact = await this.findOrFail(id)
-    await this.db
-      .delete(contacts)
-      .where(and(this.scope.eq(contacts.organizationId), eq(contacts.id, id)))
+    await this.deleteContacts([contact.id])
     await this.audit.log(actor, {
       action: 'contact.deleted',
       entityType: 'contact',
@@ -786,9 +801,7 @@ export class ContactService {
 
     switch (input.action) {
       case 'delete': {
-        await this.db
-          .delete(contacts)
-          .where(and(this.scope.eq(contacts.organizationId), inArray(contacts.id, targetIds)))
+        await this.deleteContacts(targetIds)
         await this.audit.log(actor, {
           action: 'contact.bulk_deleted',
           entityType: 'contact',

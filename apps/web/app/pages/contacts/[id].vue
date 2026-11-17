@@ -44,6 +44,7 @@ const canUpdate = computed(() => can({ contact: ['update'] }))
 const canDelete = computed(() => can({ contact: ['delete'] }))
 const canReadLogs = computed(() => can({ log: ['read'] }))
 const canReadAudit = computed(() => can({ audit: ['read'] }))
+const canReadSegments = computed(() => can({ segment: ['read'] }))
 
 const fullName = computed(() =>
   [contact.value?.firstName, contact.value?.lastName].filter(Boolean).join(' ')
@@ -612,10 +613,11 @@ const stats = computed(() => [
         </div>
 
         <aside
-          class="lg:w-[300px] shrink-0 lg:border-l lg:border-default lg:pl-8"
+          class="lg:w-[300px] shrink-0 space-y-5 lg:border-l lg:border-default lg:pl-8"
           aria-label="Contact details"
         >
           <ContactsMetadataRail :contact="contact" />
+          <ContactsSegmentMemberships v-if="canReadSegments" :contact="contact" />
         </aside>
       </div>
     </template>

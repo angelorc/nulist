@@ -279,10 +279,35 @@ export const segments = pgTable(
     name: text('name').notNull(),
     description: text('description'),
     rules: jsonb('rules').$type<SegmentRules>().notNull(),
+    membershipSyncedAt: ts('membership_synced_at'),
+    memberCount: integer('member_count'),
     createdAt: createdAt(),
     updatedAt: updatedAt()
   },
   (t) => [index('segments_org_updated_idx').on(t.organizationId, t.updatedAt)]
+)
+
+export const segmentMemberships = pgTable(
+  'segment_memberships',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    organizationId: organizationId(),
+    segmentId: uuid('segment_id')
+      .notNull()
+      .references(() => segments.id, { onDelete: 'cascade' }),
+    contactId: uuid('contact_id').references(() => contacts.id, { onDelete: 'set null' }),
+    enteredAt: ts('entered_at').notNull().defaultNow(),
+    exitedAt: ts('exited_at'),
+    baseline: boolean('baseline').notNull().default(false)
+  },
+  (t) => [
+    uniqueIndex('segment_memberships_open_uq')
+      .on(t.segmentId, t.contactId)
+      .where(sql`${t.exitedAt} is null`),
+    index('segment_memberships_entered_idx').on(t.segmentId, t.enteredAt),
+    index('segment_memberships_exited_idx').on(t.segmentId, t.exitedAt),
+    index('segment_memberships_contact_idx').on(t.contactId)
+  ]
 )
 
 export const suppressions = pgTable(
@@ -414,7 +439,7 @@ export const broadcasts = pgTable(
     audience: jsonb('audience')
       .$type<AudienceDefinition>()
       .notNull()
-      .default({ listIds: [], segmentIds: [], excludeListIds: [] }),
+      .default({ listIds: [], segmentIds: [], excludeListIds: [], excludeSegmentIds: [] }),
     utm: jsonb('utm').$type<UtmSettings>().notNull().default({ enabled: false }),
     status: broadcastStatus('status').notNull().default('draft'),
     scheduledAt: ts('scheduled_at'),
@@ -533,6 +558,9 @@ export const webhookEndpoints = pgTable(
     /** Failed attempts in a row (circuit breaker; reset by a successful attempt). */
     consecutiveFailures: integer('consecutive_failures').notNull().default(0),
     lastFailureAt: ts('last_failure_at'),
+    drainLeaseUntil: ts('drain_lease_until'),
+    drainLeaseOwner: uuid('drain_lease_owner'),
+    drainSleepUntil: ts('drain_sleep_until'),
     createdAt: createdAt(),
     updatedAt: updatedAt()
   },
@@ -551,15 +579,20 @@ export const webhookDeliveries = pgTable(
     payload: jsonb('payload').$type<JsonObject>().notNull(),
     status: deliveryStatus('status').notNull().default('pending'),
     attempts: integer('attempts').notNull().default(0),
+    scheduleAttempts: integer('schedule_attempts').notNull().default(0),
     responseStatus: integer('response_status'),
     responseBody: text('response_body'),
     durationMs: integer('duration_ms'),
     lastAttemptAt: ts('last_attempt_at'),
+    nextAttemptAt: ts('next_attempt_at'),
     createdAt: createdAt()
   },
   (t) => [
     index('webhook_deliveries_endpoint_idx').on(t.endpointId, t.createdAt),
-    index('webhook_deliveries_org_created_idx').on(t.organizationId, t.createdAt)
+    index('webhook_deliveries_org_created_idx').on(t.organizationId, t.createdAt),
+    index('webhook_deliveries_due_idx')
+      .on(t.endpointId, t.nextAttemptAt)
+      .where(sql`${t.status} = 'pending'`)
   ]
 )
 

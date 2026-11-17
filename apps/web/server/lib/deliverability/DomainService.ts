@@ -28,6 +28,7 @@ import {
   ProviderError,
   ValidationError
 } from '../core/errors'
+import { mapLimit } from '../core/mapLimit'
 import type { TenantScope } from '../core/TenantScope'
 import type { ProviderRegistry } from '../email/ProviderRegistry'
 import { SesProvider } from '../email/SesProvider'
@@ -97,31 +98,6 @@ function identityStatus(status: string | null | undefined): IdentityStatus {
     default:
       return 'not_started'
   }
-}
-
-/** Runs `fn` over `items` with at most `limit` calls in flight; results keep the input order. */
-async function mapLimit<T, R>(
-  items: readonly T[],
-  limit: number,
-  fn: (item: T) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = []
-  const queue = items.entries()
-
-  // Workers share one iterator, so each item is taken exactly once.
-  const worker = async (): Promise<void> => {
-    const next = queue.next()
-
-    if (next.done) return
-    const [index, item] = next.value
-    results[index] = await fn(item)
-
-    return worker()
-  }
-
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
-
-  return results
 }
 
 /** The SES identity that authorizes a From address, and whether the organization owns it. */

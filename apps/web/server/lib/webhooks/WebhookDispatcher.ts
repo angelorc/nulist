@@ -1,3 +1,6 @@
+import { sql } from 'drizzle-orm'
+import type { SQL } from 'drizzle-orm'
+import type { Executor } from '../../db/client'
 import type { JsonObject } from '../../../shared/types/domain'
 import type { WebhookEventType } from '../../../shared/utils/webhook-events'
 import { toJsonObject } from '../core/json'
@@ -8,6 +11,8 @@ import { toJsonObject } from '../core/json'
  */
 export interface WebhookDispatcher {
   dispatch<D extends object>(type: WebhookEventType, data: D): Promise<void>
+  enqueue(tx: Executor, type: WebhookEventType, dataQuery: SQL): Promise<void>
+  wake(endpointIds?: string[]): Promise<void>
 }
 
 export interface DispatchedEvent {
@@ -21,4 +26,14 @@ export class NullWebhookDispatcher implements WebhookDispatcher {
   async dispatch<D extends object>(type: WebhookEventType, data: D) {
     this.dispatched.push({ type, data: toJsonObject(data) })
   }
+
+  async enqueue(tx: Executor, type: WebhookEventType, dataQuery: SQL) {
+    const rows = await tx.execute<{ data: JsonObject }>(
+      sql`select events.data from (${dataQuery}) events`
+    )
+
+    for (const row of rows.rows) this.dispatched.push({ type, data: row.data })
+  }
+
+  async wake() {}
 }

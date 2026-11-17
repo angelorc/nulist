@@ -6,7 +6,8 @@ const ids = z.array(z.uuid()).max(100).default([])
 export const broadcastAudienceSchema = z.object({
   listIds: ids,
   segmentIds: ids,
-  excludeListIds: ids
+  excludeListIds: ids,
+  excludeSegmentIds: ids
 })
 
 export const broadcastUtmSchema = z.object({
@@ -121,7 +122,8 @@ export type BroadcastRecipientsQuery = z.infer<typeof broadcastRecipientsQuerySc
 export const EMPTY_AUDIENCE: AudienceDefinition = Object.freeze({
   listIds: [],
   segmentIds: [],
-  excludeListIds: []
+  excludeListIds: [],
+  excludeSegmentIds: []
 })
 
 /** "Black Friday 2026!" → "black-friday-2026" (default UTM campaign). */

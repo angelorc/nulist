@@ -14,7 +14,8 @@ export interface JobLauncher {
   sendTransactional(organizationId: string, messageId: string): Promise<string>
   runImport(organizationId: string, importId: string): Promise<string>
   doubleOptIn(organizationId: string, contactId: string, listId: string): Promise<string>
-  deliverWebhook(organizationId: string, deliveryId: string): Promise<string>
+  drainWebhookEndpoint(organizationId: string, endpointId: string, owner: string): Promise<string>
+  syncSegments(organizationId: string, segmentId?: string): Promise<string>
   /** Resume a paused workflow hook. Returns false when the hook no longer exists. */
   resumeHook(token: string, payload: HookPayload): Promise<boolean>
   cancel(runId: string): Promise<void>
@@ -47,8 +48,13 @@ export class RecordingJobLauncher implements JobLauncher {
   doubleOptIn(organizationId: string, contactId: string, listId: string) {
     return this.record('doubleOptIn', organizationId, contactId, listId)
   }
-  deliverWebhook(organizationId: string, deliveryId: string) {
-    return this.record('deliverWebhook', organizationId, deliveryId)
+  drainWebhookEndpoint(organizationId: string, endpointId: string, owner: string) {
+    return this.record('drainWebhookEndpoint', organizationId, endpointId, owner)
+  }
+  syncSegments(organizationId: string, segmentId?: string) {
+    if (segmentId) return this.record('syncSegments', organizationId, segmentId)
+
+    return this.record('syncSegments', organizationId)
   }
   async resumeHook(token: string, payload: HookPayload) {
     await this.record('resumeHook', token, payload)

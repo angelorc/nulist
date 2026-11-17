@@ -13,7 +13,9 @@ export const WEBHOOK_EVENTS = [
   { type: 'contact.deleted', description: 'A contact was deleted' },
   { type: 'contact.subscribed', description: 'A contact confirmed a list subscription' },
   { type: 'contact.unsubscribed', description: 'A contact unsubscribed from a list or globally' },
-  { type: 'broadcast.sent', description: 'A broadcast finished sending' }
+  { type: 'broadcast.sent', description: 'A broadcast finished sending' },
+  { type: 'segment.entered', description: 'A contact entered a segment' },
+  { type: 'segment.exited', description: 'A contact left a segment' }
 ] as const
 
 export type WebhookEventType = (typeof WEBHOOK_EVENTS)[number]['type']

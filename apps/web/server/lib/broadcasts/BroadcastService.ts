@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, isNull, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import type { Database } from '../../db/client'
 import { auditLogs, broadcasts, contacts, messages, templates, topics } from '../../db/schema'
@@ -213,6 +213,20 @@ export class BroadcastService {
 
   async tabCounts(): Promise<BroadcastTabCounts> {
     return this.queries.tabCounts()
+  }
+
+  async options(): Promise<Pick<BroadcastRow, 'id' | 'name' | 'status' | 'startedAt'>[]> {
+    return this.db
+      .select({
+        id: broadcasts.id,
+        name: broadcasts.name,
+        status: broadcasts.status,
+        startedAt: broadcasts.startedAt
+      })
+      .from(broadcasts)
+      .where(and(this.scope.eq(broadcasts.organizationId), isNotNull(broadcasts.startedAt)))
+      .orderBy(desc(broadcasts.startedAt), desc(broadcasts.id))
+      .limit(200)
   }
 
   async findOrFail(id: string): Promise<BroadcastRow> {

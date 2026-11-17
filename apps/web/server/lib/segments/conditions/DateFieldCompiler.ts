@@ -1,9 +1,13 @@
 import { isNotNull, isNull, sql } from 'drizzle-orm'
 import type { AnyColumn, SQL } from 'drizzle-orm'
 import { contacts } from '../../../db/schema'
-import type { SegmentCondition, SegmentField } from '../../../../shared/types/domain'
-import type { ConditionCompiler } from './ConditionCompiler'
-import { UnsupportedConditionError, asInteger, asText } from './ConditionCompiler'
+import type { SegmentFieldCondition, SegmentField } from '../../../../shared/types/domain'
+import {
+  FieldConditionCompiler,
+  UnsupportedConditionError,
+  asInteger,
+  asText
+} from './ConditionCompiler'
 
 const DATE_COLUMNS: Partial<Record<SegmentField, AnyColumn>> = {
   created_at: contacts.createdAt,
@@ -17,10 +21,10 @@ const DATE_COLUMNS: Partial<Record<SegmentField, AnyColumn>> = {
  * before = earlier than that day, after = later than that day.
  * "Not in the last N days" includes contacts where the date is not set.
  */
-export class DateFieldCompiler implements ConditionCompiler {
+export class DateFieldCompiler extends FieldConditionCompiler {
   readonly type = 'date' as const
 
-  compile(condition: SegmentCondition): SQL {
+  protected compileField(condition: SegmentFieldCondition): SQL {
     const column = DATE_COLUMNS[condition.field]
 
     if (!column) throw new UnsupportedConditionError(condition)

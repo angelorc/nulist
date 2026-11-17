@@ -1,8 +1,6 @@
 import { sleep } from 'workflow'
+import { WebhookRetryPolicy } from '../lib/webhooks/WebhookRetryPolicy'
 import { attemptWebhookDeliveryStep } from './steps/webhooks'
-
-/** Standard Webhooks style retry schedule (~1 day in total). */
-const BACKOFF = ['5s', '1m', '10m', '1h', '4h', '12h'] as const
 
 /**
  * Delivers one outbound webhook of an organization with durable exponential
@@ -12,13 +10,11 @@ const BACKOFF = ['5s', '1m', '10m', '1h', '4h', '12h'] as const
 export async function deliverWebhookWorkflow(deliveryId: string, organizationId?: string) {
   'use workflow'
 
-  for (let attempt = 0; attempt <= BACKOFF.length; attempt++) {
-    const final = attempt === BACKOFF.length
+  for (let attempt = 0; ; attempt++) {
+    const final = WebhookRetryPolicy.isFinal(attempt)
     const result = await attemptWebhookDeliveryStep(deliveryId, final, organizationId)
 
     if (result.ok || result.gone || final) return result
-    await sleep(result.retryAfter ? `${Math.min(result.retryAfter, 86_400)}s` : BACKOFF[attempt]!)
+    await sleep(`${WebhookRetryPolicy.delaySeconds(attempt, result.retryAfter)}s`)
   }
-
-  return { ok: false, status: null }
 }
