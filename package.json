@@ -31,10 +31,10 @@
   "devDependencies": {
     "@changesets/changelog-github": "1.0.1",
     "@changesets/cli": "3.0.3",
-    "@oxlint/plugins": "1.92.0",
-    "oxfmt": "0.77.0",
-    "oxlint": "1.92.0",
-    "oxlint-tsgolint": "7.0.2006",
-    "turbo": "2.11.10"
+    "@oxlint/plugins": "1.93.0",
+    "oxfmt": "0.78.0",
+    "oxlint": "1.93.0",
+    "oxlint-tsgolint": "7.0.2007",
+    "turbo": "2.11.11"
   }
 }
