@@ -26,7 +26,7 @@ function hasSubscription(status: SubscriptionStatus): SQL {
 }
 
 /**
- * Resolves a broadcast audience (lists ∪ segments − excluded lists) into the
+ * Resolves a broadcast audience (lists ∪ segments − excluded lists and segments) into the
  * set of sendable contacts of one organization. The produced SQL is a standalone
  * sub-select that returns a single column `contact_id` (uuid, distinct), so callers
  * can embed it, e.g. `INSERT INTO messages (...) SELECT ... FROM contacts WHERE id IN (<query>)`.
@@ -68,25 +68,19 @@ export class AudienceResolver {
   /** The audience as a predicate over `contacts` (for composing into other queries). */
   async condition(audience: AudienceDefinition, options: AudienceOptions = {}): Promise<SQL> {
     const listIds = uniqueIds(audience.listIds)
-    const segmentIds = uniqueIds(audience.segmentIds)
     const excludeListIds = uniqueIds(audience.excludeListIds)
+
+    const { included, excluded } = await this.segmentMatches(
+      uniqueIds(audience.segmentIds),
+      uniqueIds(audience.excludeSegmentIds)
+    )
 
     const sources: SQL[] = []
 
     if (listIds.length) sources.push(confirmedMembership(this.scope, listIds))
 
-    if (segmentIds.length) {
-      const rows = await this.db
-        .select({ rules: segments.rules })
-        .from(segments)
-        .where(and(this.scope.eq(segments.organizationId), inArray(segments.id, segmentIds)))
-
-      if (rows.length) {
-        const matches = rows.map((row) => sql`(${this.builder.build(row.rules, this.scope)})`)
-        sources.push(
-          sql`((${sql.join(matches, sql` or `)}) and ${AudienceResolver.consentGiven()})`
-        )
-      }
+    if (included.length) {
+      sources.push(sql`((${sql.join(included, sql` or `)}) and ${AudienceResolver.consentGiven()})`)
     }
 
     if (!sources.length) return sql`false`
@@ -102,9 +96,37 @@ export class AudienceResolver {
     if (excludeListIds.length)
       parts.push(sql`not ${confirmedMembership(this.scope, excludeListIds)}`)
 
+    if (excluded.length) parts.push(sql`not coalesce(${sql.join(excluded, sql` or `)}, false)`)
+
     if (options.topicId) parts.push(await this.topicCondition(options.topicId))
 
     return sql`(${sql.join(parts, sql` and `)})`
+  }
+
+  private async segmentMatches(
+    segmentIds: string[],
+    excludeSegmentIds: string[]
+  ): Promise<{ included: SQL[]; excluded: SQL[] }> {
+    const ids = [...new Set([...segmentIds, ...excludeSegmentIds])]
+
+    if (!ids.length) return { included: [], excluded: [] }
+
+    const rows = await this.db
+      .select({ id: segments.id, rules: segments.rules })
+      .from(segments)
+      .where(and(this.scope.eq(segments.organizationId), inArray(segments.id, ids)))
+
+    const context = await this.builder.context(rows.map((row) => row.rules))
+    const compiled = new Map(rows.map((row) => [row.id, this.builder.compile(row.rules, context)]))
+
+    const matches = (selected: string[]) =>
+      selected.flatMap((id) => {
+        const match = compiled.get(id)
+
+        return match ? [sql`(${match})`] : []
+      })
+
+    return { included: matches(segmentIds), excluded: matches(excludeSegmentIds) }
   }
 
   /**

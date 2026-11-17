@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, TabsItem } from '@nuxt/ui'
+import { segmentRulesSchema } from '#shared/schemas/segments'
 import type { SegmentInput } from '#shared/schemas/segments'
 import type { SegmentRules } from '#shared/types/domain'
+import type { SegmentMembershipStats } from '#shared/types/segments'
 import type { SegmentFormState } from '~/components/segments/SegmentForm.vue'
 
 definePageMeta({ permission: { segment: ['read'] } })
@@ -47,6 +49,49 @@ if (error.value || !segment.value)
 
 useSeoMeta({ title: () => segment.value?.name ?? 'Segment' })
 
+const statsUrl: string = `/api/segments/${id}/stats`
+
+const { data: stats, refresh: refreshStats } = useFetch<SegmentMembershipStats>(statsUrl, {
+  lazy: true
+})
+
+const SYNC_POLL_MS = 3000
+const MAX_SYNC_POLLS = 20
+
+interface SyncWait {
+  previous: SegmentMembershipStats['syncedAt'] | undefined
+  polls: number
+}
+
+const syncWait = ref<SyncWait | null>(null)
+const historyVersion = ref(0)
+
+const syncing = computed(
+  () => !!syncWait.value && stats.value?.syncedAt === syncWait.value.previous
+)
+
+const { pause: stopStatsPoll, resume: startStatsPoll } = useIntervalFn(
+  () => {
+    if (!syncWait.value || syncWait.value.polls >= MAX_SYNC_POLLS) {
+      syncWait.value = null
+
+      return
+    }
+
+    syncWait.value.polls++
+    void refreshStats()
+  },
+  SYNC_POLL_MS,
+  { immediate: false }
+)
+
+watch(syncing, (value, previous) => {
+  if (value) startStatsPoll()
+  else stopStatsPoll()
+
+  if (previous && !value) historyVersion.value++
+})
+
 const { number } = useFormat()
 const confirm = useConfirm()
 const form = useTemplateRef('form')
@@ -61,17 +106,30 @@ function toState(source: SavedSegment): SegmentFormState {
   )
 }
 
+function snapshot(source: SegmentFormState): string {
+  const rules = segmentRulesSchema.safeParse(source.rules)
+
+  return JSON.stringify({ ...source, rules: rules.success ? rules.data : source.rules })
+}
+
 const state = ref<SegmentFormState>(toState(segment.value))
 const baseline = ref(JSON.stringify(state.value))
-const dirty = computed(() => JSON.stringify(state.value) !== baseline.value)
+const savedSnapshot = computed(() => snapshot(JSON.parse(baseline.value)))
+const dirty = computed(() => snapshot(state.value) !== savedSnapshot.value)
 const contactsVersion = ref(0)
 let leaving = false
 
 // Tabs ---------------------------------------------------------------------
-type Tab = 'rules' | 'contacts'
+type Tab = 'rules' | 'contacts' | 'history'
 
 const tab = computed<Tab>({
-  get: () => (route.query.tab === 'contacts' && canViewContacts.value ? 'contacts' : 'rules'),
+  get: () => {
+    if (!canViewContacts.value) return 'rules'
+
+    if (route.query.tab === 'history') return 'history'
+
+    return route.query.tab === 'contacts' ? 'contacts' : 'rules'
+  },
   set: (value) => {
     router.replace({
       query: {
@@ -105,6 +163,7 @@ const tabs = computed<TabsItem[]>(() => {
             class: 'tabular-nums'
           }
   })
+  items.push({ label: 'History', value: 'history', icon: 'i-lucide-history' })
 
   return items
 })
@@ -116,12 +175,18 @@ const { run: update, pending } = useApiAction(
 )
 
 async function save(data: SegmentInput) {
+  const previousRules = JSON.stringify(segment.value?.rules)
   const row = await update(data)
 
   if (!row) return
   state.value = toState(row)
   baseline.value = JSON.stringify(state.value)
   contactsVersion.value++
+  historyVersion.value++
+
+  if (JSON.stringify(row.rules) !== previousRules)
+    syncWait.value = { previous: stats.value?.syncedAt, polls: 0 }
+
   await refresh()
 }
 
@@ -244,7 +309,12 @@ defineShortcuts({
       </UDashboardNavbar>
 
       <UDashboardToolbar>
-        <UTabs v-model="tab" :items="tabs" :content="false" size="sm" />
+        <template #left>
+          <UTabs v-model="tab" :items="tabs" :content="false" size="sm" />
+        </template>
+        <template #right>
+          <SegmentsSegmentMembershipSummary :stats="stats" :syncing="syncing" />
+        </template>
       </UDashboardToolbar>
     </template>
 
@@ -259,6 +329,7 @@ defineShortcuts({
           id="segment-form"
           ref="form"
           v-model:state="state"
+          :segment-id="id"
           :readonly="!canUpdate"
           @submit="save"
         />
@@ -276,6 +347,13 @@ defineShortcuts({
           </p>
           <SegmentsSegmentContactsTable :key="contactsVersion" :segment-id="id" />
         </template>
+
+        <SegmentsSegmentHistoryTable
+          v-else-if="tab === 'history'"
+          :key="historyVersion"
+          :segment-id="id"
+          :synced="stats ? !!stats.syncedAt : null"
+        />
       </div>
     </template>
   </UDashboardPanel>

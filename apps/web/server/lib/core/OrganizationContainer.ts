@@ -4,6 +4,7 @@ import { ApiLogService } from '../api/ApiLogService'
 import { BroadcastApi } from '../api/BroadcastApi'
 import { ContactApi } from '../api/ContactApi'
 import { ListApi } from '../api/ListApi'
+import { SegmentApi } from '../api/SegmentApi'
 import { TemplateApi } from '../api/TemplateApi'
 import { AuditLogger } from '../audit/AuditLogger'
 import { BroadcastService } from '../broadcasts/BroadcastService'
@@ -36,6 +37,7 @@ import { MemberService } from '../organizations/MemberService'
 import { OrganizationProfile } from '../organizations/OrganizationProfile'
 import { SystemMail } from '../organizations/SystemMail'
 import { AudienceResolver } from '../segments/AudienceResolver'
+import { SegmentMembershipService } from '../segments/SegmentMembershipService'
 import { SegmentQueryBuilder } from '../segments/SegmentQueryBuilder'
 import { SegmentService } from '../segments/SegmentService'
 import { LinkBuilder } from '../security/LinkBuilder'
@@ -106,6 +108,7 @@ export class OrganizationContainer {
   private topicsInstance?: TopicService
   private segmentBuilderInstance?: SegmentQueryBuilder
   private segmentsInstance?: SegmentService
+  private segmentMembershipsInstance?: SegmentMembershipService
   private audienceInstance?: AudienceResolver
   private templatesInstance?: TemplateService
   private designRendererInstance?: TemplateDesignRenderer
@@ -130,6 +133,7 @@ export class OrganizationContainer {
   private contactApiInstance?: ContactApi
   private listApiInstance?: ListApi
   private broadcastApiInstance?: BroadcastApi
+  private segmentApiInstance?: SegmentApi
   private templateApiInstance?: TemplateApi
   private publicSignupInstance?: PublicSignup
   private publicBrandInstance?: PublicBrandReader
@@ -259,7 +263,8 @@ export class OrganizationContainer {
       this.limits,
       this.webhooks,
       this.jobs,
-      this.suppressions
+      this.suppressions,
+      this.segmentMemberships
     ))
   }
 
@@ -283,7 +288,7 @@ export class OrganizationContainer {
   }
 
   get segmentBuilder(): SegmentQueryBuilder {
-    return (this.segmentBuilderInstance ??= new SegmentQueryBuilder())
+    return (this.segmentBuilderInstance ??= new SegmentQueryBuilder(this.scope, this.db))
   }
 
   get segments(): SegmentService {
@@ -292,7 +297,17 @@ export class OrganizationContainer {
       this.db,
       this.audit,
       this.limits,
-      this.segmentBuilder
+      this.segmentBuilder,
+      this.jobs
+    ))
+  }
+
+  get segmentMemberships(): SegmentMembershipService {
+    return (this.segmentMembershipsInstance ??= new SegmentMembershipService(
+      this.scope,
+      this.db,
+      this.segmentBuilder,
+      this.webhooks
     ))
   }
 
@@ -549,6 +564,10 @@ export class OrganizationContainer {
   /** REST API v1 broadcasts resource. */
   get broadcastApi(): BroadcastApi {
     return (this.broadcastApiInstance ??= new BroadcastApi(this.broadcasts))
+  }
+
+  get segmentApi(): SegmentApi {
+    return (this.segmentApiInstance ??= new SegmentApi(this.segments))
   }
 
   /** REST API v1 templates resource. */

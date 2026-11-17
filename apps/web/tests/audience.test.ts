@@ -73,7 +73,8 @@ describe('sending eligibility', () => {
     const audience = {
       listIds: [news.id, offers.id, members.id],
       segmentIds: [proPlan.id],
-      excludeListIds: [excluded.id]
+      excludeListIds: [excluded.id],
+      excludeSegmentIds: []
     }
 
     const eligible = ['alice@example.test', 'bob@example.test', 'jack@example.test']

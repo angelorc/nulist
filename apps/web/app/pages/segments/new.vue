@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import type { DropdownMenuItem } from '@nuxt/ui'
 import { newSegmentCondition } from '#shared/schemas/segments'
 import type { SegmentInput } from '#shared/schemas/segments'
+import type { SegmentPreset } from '#shared/utils/segments'
 import type { SegmentFormState } from '~/components/segments/SegmentForm.vue'
 
 definePageMeta({ permission: { segment: ['create'] } })
@@ -18,7 +20,41 @@ const state = ref<SegmentFormState>({
 
 const baseline = JSON.stringify(state.value)
 const dirty = computed(() => JSON.stringify(state.value) !== baseline)
+const applied = ref<{ preset: SegmentPreset; state: string } | null>(null)
 let saved = false
+
+async function applyPreset(preset: SegmentPreset) {
+  const current = JSON.stringify(state.value)
+  const pristine = current === baseline || current === applied.value?.state
+
+  if (!pristine) {
+    const ok = await confirm({
+      title: `Start from "${preset.label}"?`,
+      description: 'Your current conditions will be replaced.',
+      confirmLabel: 'Replace conditions'
+    })
+
+    if (!ok) return
+  }
+
+  const previous = applied.value?.preset
+  const next = state.value
+
+  if (!next.name.trim() || next.name === previous?.label) next.name = preset.label
+
+  if (!next.description.trim() || next.description === previous?.description)
+    next.description = preset.description
+
+  next.rules = structuredClone(preset.rules)
+  applied.value = { preset, state: JSON.stringify(next) }
+}
+
+const presetItems: DropdownMenuItem[] = SEGMENT_PRESETS.map((preset) => ({
+  label: preset.label,
+  description: preset.description,
+  icon: preset.icon,
+  onSelect: () => applyPreset(preset)
+}))
 
 const { run, pending } = useApiAction(
   (data: SegmentInput) => $fetch<{ id: string }>('/api/segments', { method: 'POST', body: data }),
@@ -68,6 +104,9 @@ defineShortcuts({ meta_s: { usingInput: true, handler: () => form.value?.submit(
           />
         </template>
         <template #right>
+          <UDropdownMenu :items="presetItems" :content="{ align: 'end' }" :ui="{ content: 'w-80' }">
+            <UButton label="Start from a preset" icon="i-lucide-library" variant="ghost" />
+          </UDropdownMenu>
           <UButton label="Cancel" variant="ghost" to="/segments" class="hidden sm:inline-flex" />
           <UTooltip text="Create segment" :kbds="['meta', 's']">
             <UButton type="submit" form="segment-form" label="Create segment" :loading="pending" />

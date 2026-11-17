@@ -16,6 +16,7 @@ export interface BroadcastAudience {
   listIds: string[]
   segmentIds: string[]
   excludeListIds: string[]
+  excludeSegmentIds: string[]
 }
 
 export interface BroadcastUtm {
@@ -88,6 +89,7 @@ export interface BroadcastAudienceOptions {
   segmentIds?: string[]
   /** Contacts of these lists are left out. */
   excludeListIds?: string[]
+  excludeSegmentIds?: string[]
 }
 
 export interface BroadcastUtmOptions {

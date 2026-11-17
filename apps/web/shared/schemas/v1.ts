@@ -9,6 +9,7 @@ import type {
   ContactStatus,
   JsonObject,
   OptInMode,
+  SegmentRules,
   SubscriptionStatus,
   TemplateEditor,
   TemplateKind,
@@ -74,7 +75,7 @@ export const v1UnsubscribeSchema = z
 
 export const v1EmailParamsSchema = z.object({ id: z.uuid('Email id must be a UUID') })
 
-/** `/api/v1/{lists,broadcasts}/{id}`. */
+/** `/api/v1/{lists,broadcasts,segments}/{id}`. */
 export const v1IdParamsSchema = z.object({ id: z.uuid('id must be a UUID') })
 
 /** `/api/v1/templates/{id}`: a template id or its slug. */
@@ -123,6 +124,12 @@ export type V1ListUpdateInput = z.infer<typeof v1ListUpdateSchema>
 export const v1BroadcastListQuerySchema = broadcastListQuerySchema
 
 export type V1BroadcastListQuery = z.infer<typeof v1BroadcastListQuerySchema>
+
+export const v1SegmentContactsQuerySchema = v1PageQuerySchema.extend({
+  q: z.string().trim().max(200).optional()
+})
+
+export type V1SegmentContactsQuery = z.infer<typeof v1SegmentContactsQuerySchema>
 
 /** Creates a draft; every field can be completed later with PATCH. */
 export const v1BroadcastCreateSchema = broadcastCreateSchema
@@ -334,6 +341,28 @@ export interface V1BroadcastDetail extends V1Broadcast {
   progress: BroadcastProgress
 }
 
+export interface V1Segment {
+  id: string
+  object: 'segment'
+  name: string
+  description: string | null
+  rules: SegmentRules
+  summary: string
+  contactCount: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface V1SegmentContact {
+  id: string
+  object: 'contact'
+  email: string
+  firstName: string | null
+  lastName: string | null
+  status: ContactStatus
+  createdAt: string
+}
+
 // ---------------------------------------------------------------------------
 // Endpoint catalogue (dashboard reference)
 // ---------------------------------------------------------------------------
@@ -366,6 +395,8 @@ export const V1_PERMISSIONS = {
   createBroadcast: { broadcast: ['create'] },
   updateBroadcast: { broadcast: ['update'] },
   deleteBroadcast: { broadcast: ['delete'] },
+  readSegment: { segment: ['read'] },
+  readSegmentContacts: { segment: ['read'], contact: ['read'] },
   /** Sending now, scheduling and cancelling (same as the dashboard). */
   sendBroadcast: { broadcast: ['send'] },
   readTemplate: { template: ['read'] },
@@ -515,6 +546,24 @@ export const V1_ENDPOINTS: readonly V1Endpoint[] = [
     path: '/api/v1/broadcasts/{id}/cancel',
     permission: V1_PERMISSIONS.sendBroadcast,
     description: 'Cancel a scheduled, sending or paused broadcast; unsent emails are dropped.'
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/segments',
+    permission: V1_PERMISSIONS.readSegment,
+    description: 'List segments with their rules and live contact counts (page, pageSize).'
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/segments/{id}',
+    permission: V1_PERMISSIONS.readSegment,
+    description: 'Retrieve a segment with its rules, summary and live contact count.'
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/segments/{id}/contacts',
+    permission: V1_PERMISSIONS.readSegmentContacts,
+    description: 'List the contacts currently matching a segment (page, pageSize, q).'
   },
   {
     method: 'GET',

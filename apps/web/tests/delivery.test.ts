@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { afterAll, describe, expect, it } from 'vitest'
 import { Webhook, WebhookVerificationError } from 'standardwebhooks'
 import { z } from 'zod'
-import { apikey } from '../server/db/schema'
+import { and, asc, eq, sql } from 'drizzle-orm'
+import { apikey, webhookDeliveries, webhookEndpoints } from '../server/db/schema'
 import type { ApiKeyIdentity } from '../server/lib/api/ApiKeyVerifier'
 import { ConflictError } from '../server/lib/core/errors'
 import type { SnsEnvelope } from '../server/lib/events/SnsVerifier'
@@ -336,32 +337,68 @@ describe('transactional API', () => {
   })
 })
 
+function drainsOf(org: TestOrganization): string[] {
+  return platform
+    .launched('drainWebhookEndpoint')
+    .flatMap(({ args }) => (args[0] === org.id ? [z.string().parse(args[1])] : []))
+}
+
+async function deliveriesOf(endpointId: string) {
+  return platform.db
+    .select({
+      email: sql<string>`${webhookDeliveries.payload} -> 'data' ->> 'email'`,
+      status: webhookDeliveries.status,
+      attempts: webhookDeliveries.attempts,
+      nextAttemptAt: webhookDeliveries.nextAttemptAt
+    })
+    .from(webhookDeliveries)
+    .where(eq(webhookDeliveries.endpointId, endpointId))
+    .orderBy(asc(webhookDeliveries.createdAt))
+}
+
+async function ownerOf(endpointId: string): Promise<string> {
+  const [row] = await platform.db
+    .select({ owner: webhookEndpoints.drainLeaseOwner })
+    .from(webhookEndpoints)
+    .where(eq(webhookEndpoints.id, endpointId))
+
+  if (!row?.owner) throw new Error('No drain holds the endpoint lease')
+
+  return row.owner
+}
+
+async function expireLease(endpointId: string) {
+  await platform.db
+    .update(webhookEndpoints)
+    .set({ drainLeaseUntil: null })
+    .where(eq(webhookEndpoints.id, endpointId))
+}
+
 describe('outbound webhooks', () => {
   it('signs each delivery so the receiver can verify exactly that payload', async () => {
     const receiver = await WebhookReceiver.start()
 
     try {
       const org = await platform.organization('Webhooks')
+      const { webhookService } = org.services
 
-      const endpoint = await org.services.webhookService.createEndpoint({
+      const endpoint = await webhookService.createEndpoint({
         url: receiver.url,
         events: ['contact.created']
       })
 
       await org.contact({ email: 'hooked@example.test' })
 
-      const deliveries = platform
-        .launched('deliverWebhook')
-        .filter(({ args }) => args[0] === org.id)
-        .map(({ args }) => z.string().parse(args[1]))
-
-      expect(deliveries).toHaveLength(1)
-      expect(await org.services.webhookService.attempt(deliveries[0]!)).toMatchObject({
-        ok: true,
-        status: 204
+      expect(drainsOf(org)).toEqual([endpoint.id])
+      expect(await webhookService.drainBatch(endpoint.id, await ownerOf(endpoint.id))).toEqual({
+        owned: true,
+        processed: 1,
+        nextDueAt: null,
+        disabled: false
       })
 
       const [request] = receiver.received
+      const { items } = await webhookService.listDeliveries({ page: 1, pageSize: 10 })
 
       if (!request) throw new Error('The endpoint received nothing')
       const receiverSide = new Webhook(endpoint.secret)
@@ -370,7 +407,8 @@ describe('outbound webhooks', () => {
         type: 'contact.created',
         data: { email: 'hooked@example.test' }
       })
-      expect(request.headers['webhook-id']).toBe(deliveries[0])
+      expect(items).toMatchObject([{ status: 'success', responseStatus: 204 }])
+      expect(request.headers['webhook-id']).toBe(items[0]?.id)
       expect(() =>
         receiverSide.verify(request.body.replace('hooked@', 'forged@'), request.headers)
       ).toThrow(WebhookVerificationError)
@@ -380,5 +418,209 @@ describe('outbound webhooks', () => {
     } finally {
       await receiver.stop()
     }
+  })
+
+  it('starts one drain per endpoint while its lease is held', async () => {
+    const org = await platform.organization('Webhook lease')
+    const { webhookService } = org.services
+
+    const endpoint = await webhookService.createEndpoint({
+      url: 'http://127.0.0.1/hooks',
+      events: ['contact.created']
+    })
+
+    for (const email of ['a@example.test', 'b@example.test', 'c@example.test'])
+      await org.contact({ email })
+
+    await webhookService.wake()
+
+    expect(drainsOf(org)).toEqual([endpoint.id])
+
+    await platform.db
+      .update(webhookEndpoints)
+      .set({ drainLeaseUntil: sql`now() - interval '1 second'` })
+      .where(eq(webhookEndpoints.id, endpoint.id))
+    await webhookService.wake()
+
+    expect(drainsOf(org)).toEqual([endpoint.id, endpoint.id])
+  })
+
+  it('retries failed deliveries on schedule, fails the last attempt and stops on 410', async () => {
+    const receiver = await WebhookReceiver.start()
+
+    try {
+      const org = await platform.organization('Webhook retries')
+      const { webhookService } = org.services
+
+      receiver.answer = (body) => {
+        if (body.includes('retry@')) return 500
+
+        return body.includes('gone@') ? 410 : 204
+      }
+
+      const endpoint = await webhookService.createEndpoint({
+        url: receiver.url,
+        events: ['contact.created']
+      })
+
+      await org.contact({ email: 'ok@example.test' })
+      await org.contact({ email: 'retry@example.test' })
+
+      const owner = await ownerOf(endpoint.id)
+      const first = await webhookService.drainBatch(endpoint.id, owner)
+      const [ok, retry] = await deliveriesOf(endpoint.id)
+
+      expect(ok).toEqual({
+        email: 'ok@example.test',
+        status: 'success',
+        attempts: 1,
+        nextAttemptAt: null
+      })
+      expect(retry).toMatchObject({ email: 'retry@example.test', status: 'pending', attempts: 1 })
+      expect(retry?.nextAttemptAt?.getTime()).toBeGreaterThan(Date.now())
+      expect(retry?.nextAttemptAt?.getTime()).toBeLessThanOrEqual(Date.now() + 5_000)
+      expect(first).toEqual({
+        owned: true,
+        processed: 2,
+        nextDueAt: retry?.nextAttemptAt?.toISOString(),
+        disabled: false
+      })
+      expect(await webhookService.drainBatch(endpoint.id, owner)).toEqual({
+        ...first,
+        processed: 0
+      })
+
+      await platform.db
+        .update(webhookDeliveries)
+        .set({ attempts: 6, scheduleAttempts: 6, nextAttemptAt: sql`now()` })
+        .where(
+          and(
+            eq(webhookDeliveries.endpointId, endpoint.id),
+            eq(webhookDeliveries.status, 'pending')
+          )
+        )
+
+      expect(await webhookService.drainBatch(endpoint.id, owner)).toEqual({
+        owned: true,
+        processed: 1,
+        nextDueAt: null,
+        disabled: false
+      })
+      expect(await webhookService.releaseDrain(endpoint.id, owner)).toBe(false)
+
+      const failed = (await webhookService.listDeliveries({ page: 1, pageSize: 10 })).items.find(
+        (item) => item.status === 'failed'
+      )
+
+      if (!failed) throw new Error('The last attempt did not fail the delivery')
+      await webhookService.redeliver(failed.id)
+
+      const redelivering = await ownerOf(endpoint.id)
+
+      expect(await webhookService.drainBatch(endpoint.id, redelivering)).toMatchObject({
+        owned: true,
+        processed: 1
+      })
+      expect((await deliveriesOf(endpoint.id))[1]).toMatchObject({
+        email: 'retry@example.test',
+        status: 'pending',
+        attempts: 8
+      })
+
+      await org.contact({ email: 'gone@example.test' })
+
+      expect(await webhookService.drainBatch(endpoint.id, redelivering)).toEqual({
+        owned: true,
+        processed: 1,
+        nextDueAt: null,
+        disabled: true
+      })
+      expect(
+        (await deliveriesOf(endpoint.id)).map(({ email, status, attempts }) => [
+          email,
+          status,
+          attempts
+        ])
+      ).toEqual([
+        ['ok@example.test', 'success', 1],
+        ['retry@example.test', 'failed', 8],
+        ['gone@example.test', 'failed', 1]
+      ])
+      expect(await webhookService.getEndpoint(endpoint.id)).toMatchObject({ enabled: false })
+      expect(receiver.received).toHaveLength(5)
+    } finally {
+      await receiver.stop()
+    }
+  })
+
+  it('wakes a sleeping drain for a new delivery and stops a drain that lost its lease', async () => {
+    const receiver = await WebhookReceiver.start()
+
+    try {
+      const org = await platform.organization('Webhook wake')
+      const { webhookService } = org.services
+
+      receiver.answer = (body) => (body.includes('retry@') ? 500 : 200)
+      receiver.reply = 'ok\u0000'
+
+      const endpoint = await webhookService.createEndpoint({
+        url: receiver.url,
+        events: ['contact.created']
+      })
+
+      await org.contact({ email: 'retry@example.test' })
+
+      const owner = await ownerOf(endpoint.id)
+
+      await webhookService.drainBatch(endpoint.id, owner)
+
+      expect(await webhookService.drainBatch(endpoint.id, owner)).toMatchObject({
+        owned: true,
+        processed: 0
+      })
+
+      await org.contact({ email: 'new@example.test' })
+      await org.contact({ email: 'later@example.test' })
+
+      expect(platform.launched('resumeHook').map(({ args }) => args[0])).toContain(
+        WebhookService.drainToken(owner)
+      )
+      expect(
+        platform
+          .launched('resumeHook')
+          .filter(({ args }) => args[0] === WebhookService.drainToken(owner))
+      ).toHaveLength(1)
+      expect(drainsOf(org)).toEqual([endpoint.id])
+      expect(await webhookService.drainBatch(endpoint.id, randomUUID())).toEqual({
+        owned: false,
+        processed: 0,
+        nextDueAt: null,
+        disabled: false
+      })
+      expect(receiver.received).toHaveLength(1)
+      expect(await webhookService.drainBatch(endpoint.id, owner)).toMatchObject({ processed: 2 })
+      expect((await webhookService.listDeliveries({ page: 1, pageSize: 10 })).items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ status: 'success', responseStatus: 200, responseBody: 'ok' })
+        ])
+      )
+    } finally {
+      await receiver.stop()
+    }
+  })
+
+  it('wakes endpoints whose due deliveries no drain is handling', async () => {
+    const org = await platform.organization('Webhook sweep')
+
+    const endpoint = await org.services.webhookService.createEndpoint({
+      url: 'http://127.0.0.1/hooks',
+      events: ['contact.created']
+    })
+
+    await org.contact({ email: 'stranded@example.test' })
+    await expireLease(endpoint.id)
+
+    expect(await platform.container.webhookSweep.run()).toMatchObject({ skipped: false })
+    expect(drainsOf(org)).toEqual([endpoint.id, endpoint.id])
   })
 })

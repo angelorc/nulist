@@ -13,7 +13,8 @@ defineProps<{ disabled?: boolean }>()
 const GROUP_LABELS = new Map([
   ['email', 'Email'],
   ['contact', 'Contacts'],
-  ['broadcast', 'Broadcasts']
+  ['broadcast', 'Broadcasts'],
+  ['segment', 'Segments']
 ])
 
 const groups = computed(() => {

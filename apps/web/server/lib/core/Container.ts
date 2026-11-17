@@ -15,11 +15,13 @@ import { OutboundHttpClient } from '../security/OutboundHttpClient'
 import { OutboundTargetPolicy } from '../security/OutboundTargetPolicy'
 import type { OutboundPolicyOptions } from '../security/OutboundTargetPolicy'
 import { SecretBox } from '../security/SecretBox'
+import { SegmentSyncScheduler } from '../segments/SegmentSyncScheduler'
 import { TokenService } from '../security/TokenService'
 import { buildDefaultSettings } from '../settings/defaults'
 import type { EnvDefaults } from '../settings/defaults'
 import { TemplateRenderer } from '../templates/TemplateRenderer'
 import type { WebhookDispatcher } from '../webhooks/WebhookDispatcher'
+import { WebhookSweeper } from '../webhooks/WebhookSweeper'
 import type { SettingsMap } from '../../../shared/types/domain'
 import type { JobLauncher } from './jobs'
 import { RecordingJobLauncher } from './jobs'
@@ -118,6 +120,8 @@ export class Container {
   private outboundPolicyInstance?: OutboundTargetPolicy
   private outboundHttpInstance?: OutboundHttpClient
   private clientAddressInstance?: ClientAddressResolver
+  private segmentSyncInstance?: SegmentSyncScheduler
+  private webhookSweepInstance?: WebhookSweeper
   private readonly tenants: OrganizationContainerCache
 
   constructor(
@@ -215,6 +219,14 @@ export class Container {
   /** SES events arrive instance-wide and are applied in the organization of their message. */
   get sesEvents(): SesEventProcessor {
     return (this.sesEventsInstance ??= new SesEventProcessor(this.db, this))
+  }
+
+  get segmentSync(): SegmentSyncScheduler {
+    return (this.segmentSyncInstance ??= new SegmentSyncScheduler(this.db, this.jobs))
+  }
+
+  get webhookSweep(): WebhookSweeper {
+    return (this.webhookSweepInstance ??= new WebhookSweeper(this.db, this))
   }
 
   // Organizations ------------------------------------------------------------

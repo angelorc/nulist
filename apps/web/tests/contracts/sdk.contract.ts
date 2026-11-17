@@ -11,6 +11,7 @@ import type { z } from 'zod'
 import type { BroadcastApi } from '../../server/lib/api/BroadcastApi'
 import type { ContactApi } from '../../server/lib/api/ContactApi'
 import type { ListApi } from '../../server/lib/api/ListApi'
+import type { SegmentApi } from '../../server/lib/api/SegmentApi'
 import type { TemplateApi } from '../../server/lib/api/TemplateApi'
 import type { TransactionalService } from '../../server/lib/transactional/TransactionalService'
 import type {
@@ -29,6 +30,7 @@ import type {
   v1ListCreateSchema,
   v1ListUpdateSchema,
   v1PageQuerySchema,
+  v1SegmentContactsQuerySchema,
   v1TemplateCreateSchema,
   v1TemplateListQuerySchema,
   v1TemplateUpdateSchema,
@@ -99,6 +101,16 @@ export type ListsContract = AllHold<
     Answers<Resolved<ListApi['create']>, Sdk.MailingList>,
     Answers<Resolved<ListApi['update']>, Sdk.MailingList>,
     Answers<Resolved<ListApi['delete']>, Sdk.DeletedResource<'mailing_list'>>
+  ]
+>
+
+export type SegmentsContract = AllHold<
+  [
+    Accepts<typeof v1PageQuerySchema, Sdk.PageParams>,
+    Accepts<typeof v1SegmentContactsQuerySchema, Sdk.ListSegmentContactsOptions>,
+    Answers<Resolved<SegmentApi['list']>, Sdk.Page<Sdk.Segment>>,
+    Answers<Resolved<SegmentApi['get']>, Sdk.Segment>,
+    Answers<Resolved<SegmentApi['contacts']>, Sdk.Page<Sdk.SegmentContact>>
   ]
 >
 

@@ -6,6 +6,7 @@ import { Broadcasts } from './resources/broadcasts'
 import { Contacts } from './resources/contacts'
 import { Batch, Emails } from './resources/emails'
 import { Lists } from './resources/lists'
+import { Segments } from './resources/segments'
 import { Templates } from './resources/templates'
 
 const DEFAULT_USER_AGENT = `nulist-node:${version}`
@@ -68,6 +69,7 @@ export class Nulist {
   readonly batch: Batch
   readonly contacts: Contacts
   readonly lists: Lists
+  readonly segments: Segments
   readonly broadcasts: Broadcasts
   readonly templates: Templates
 
@@ -101,6 +103,7 @@ export class Nulist {
     this.batch = this.emails.batch
     this.contacts = new Contacts(transport)
     this.lists = new Lists(transport)
+    this.segments = new Segments(transport)
     this.broadcasts = new Broadcasts(transport)
     this.templates = new Templates(transport)
   }

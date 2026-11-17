@@ -35,10 +35,16 @@ export class WorkflowJobLauncher implements JobLauncher {
     return (await start(doubleOptInWorkflow, [contactId, listId, organizationId])).runId
   }
 
-  async deliverWebhook(organizationId: string, deliveryId: string) {
-    const { deliverWebhookWorkflow } = await import('../../workflows/webhook-delivery')
+  async drainWebhookEndpoint(organizationId: string, endpointId: string, owner: string) {
+    const { drainWebhookEndpointWorkflow } = await import('../../workflows/webhook-drain')
 
-    return (await start(deliverWebhookWorkflow, [deliveryId, organizationId])).runId
+    return (await start(drainWebhookEndpointWorkflow, [endpointId, organizationId, owner])).runId
+  }
+
+  async syncSegments(organizationId: string, segmentId?: string) {
+    const { syncSegmentsWorkflow } = await import('../../workflows/segment-sync')
+
+    return (await start(syncSegmentsWorkflow, [organizationId, segmentId])).runId
   }
 
   async resumeHook(token: string, payload: HookPayload): Promise<boolean> {

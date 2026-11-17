@@ -1,34 +1,33 @@
 <script setup lang="ts">
-import { MAX_SEGMENT_CONDITIONS, newSegmentCondition } from '#shared/schemas/segments'
-import type { SegmentCondition, SegmentRules } from '#shared/types/domain'
-import type { ListOption } from './SegmentConditionRow.vue'
+import {
+  MAX_SEGMENT_CONDITIONS,
+  MAX_SEGMENT_GROUPS,
+  isSegmentGroup,
+  newSegmentCondition,
+  newSegmentGroup,
+  segmentConditionEntries
+} from '#shared/schemas/segments'
+import type { SegmentNode, SegmentRules } from '#shared/types/domain'
 
 /**
- * "Match [all ▾] of the following" + one row per condition.
+ * "Match [all ▾] of the following" + one row per condition or condition group.
  * Reusable: bind any SegmentRules object; `name` is the form path used for field errors.
  * `readonly` disables every control and hides adding and removing conditions.
  */
-const props = withDefaults(defineProps<{ name?: string; readonly?: boolean }>(), {
-  name: 'rules',
-  readonly: false
-})
+const props = withDefaults(
+  defineProps<{ name?: string; readonly?: boolean; segmentId?: string }>(),
+  {
+    name: 'rules',
+    readonly: false,
+    segmentId: undefined
+  }
+)
 
 const rules = defineModel<SegmentRules>({ required: true })
 
-interface ListSummary {
-  id: string
-  name: string
-}
-
-// Lists of the active organization (list:read is granted to every role).
-const { data: listData, status: listStatus } = useFetch<ListSummary[]>('/api/lists', {
-  key: 'segment-builder-lists',
-  lazy: true,
-  default: () => []
-})
-
-const lists = computed<ListOption[]>(() =>
-  (listData.value ?? []).map((l) => ({ label: l.name, value: l.id }))
+provide(
+  SEGMENT_BUILDER_OPTIONS,
+  useSegmentBuilderOptions(() => props.segmentId)
 )
 
 const matchItems = [
@@ -36,36 +35,56 @@ const matchItems = [
   { label: 'any', value: 'any' }
 ]
 
-// Stable row keys without polluting the rules JSON.
-const keys = new WeakMap<SegmentCondition, number>()
-let seq = 0
-
-function keyOf(condition: SegmentCondition): number {
-  const raw = toRaw(condition)
-  const known = keys.get(raw)
-
-  if (known !== undefined) return known
-
-  seq += 1
-  keys.set(raw, seq)
-
-  return seq
-}
+const keyOf = useSegmentNodeKeys()
 
 const container = useTemplateRef<HTMLElement>('container')
-const canAdd = computed(() => rules.value.conditions.length < MAX_SEGMENT_CONDITIONS)
+
+const conditionCount = computed(() => segmentConditionEntries(rules.value).length)
+const groupCount = computed(() => rules.value.conditions.filter(isSegmentGroup).length)
+const canAdd = computed(() => conditionCount.value < MAX_SEGMENT_CONDITIONS)
+const canAddGroup = computed(() => canAdd.value && groupCount.value < MAX_SEGMENT_GROUPS)
+
+const limitNote = computed(() => {
+  if (!canAdd.value) return `Up to ${MAX_SEGMENT_CONDITIONS} conditions`
+
+  if (!canAddGroup.value) return `Up to ${MAX_SEGMENT_GROUPS} groups`
+
+  return null
+})
+
+async function focusNode(node: SegmentNode | undefined) {
+  await nextTick()
+
+  const target = node
+    ? container.value
+        ?.querySelector<HTMLElement>(`[data-node-key="${keyOf(node)}"]`)
+        ?.querySelector<HTMLElement>('button, input')
+    : container.value?.querySelector<HTMLElement>('[data-add-condition]')
+
+  target?.focus()
+}
 
 async function add() {
   if (props.readonly || !canAdd.value) return
-  rules.value.conditions.push(newSegmentCondition('email'))
-  await nextTick()
-  const rows = container.value?.querySelectorAll<HTMLElement>('[data-condition-row]')
-  rows?.[rows.length - 1]?.querySelector<HTMLElement>('button, input')?.focus()
+
+  const condition = newSegmentCondition('email')
+  rules.value.conditions.push(condition)
+  await focusNode(condition)
 }
 
-function remove(index: number) {
+async function addGroup() {
+  if (props.readonly || !canAddGroup.value) return
+
+  const group = newSegmentGroup()
+  rules.value.conditions.push(group)
+  await focusNode(group)
+}
+
+async function remove(index: number) {
   if (props.readonly) return
+
   rules.value.conditions.splice(index, 1)
+  await focusNode(rules.value.conditions[index] ?? rules.value.conditions[index - 1])
 }
 
 const joiner = computed(() => (rules.value.match === 'any' ? 'or' : 'and'))
@@ -97,17 +116,25 @@ const joiner = computed(() => (rules.value.match === 'any' ? 'or' : 'and'))
       leave-to-class="opacity-0"
     >
       <li
-        v-for="(condition, index) in rules.conditions"
-        :key="keyOf(condition)"
+        v-for="(node, index) in rules.conditions"
+        :key="keyOf(node)"
+        :data-node-key="keyOf(node)"
         class="px-3 py-2.5"
-        data-condition-row
       >
-        <SegmentsSegmentConditionRow
-          :model-value="condition"
+        <SegmentsSegmentGroupBlock
+          v-if="isSegmentGroup(node)"
+          :model-value="node"
           :name="`${props.name}.conditions.${index}`"
           :prefix="index === 0 ? 'Where' : joiner"
-          :lists="lists"
-          :lists-loading="listStatus === 'pending'"
+          :can-add="canAdd"
+          :readonly="readonly"
+          @remove="remove(index)"
+        />
+        <SegmentsSegmentConditionRow
+          v-else
+          :model-value="node"
+          :name="`${props.name}.conditions.${index}`"
+          :prefix="index === 0 ? 'Where' : joiner"
           :readonly="readonly"
           @remove="remove(index)"
         />
@@ -124,19 +151,26 @@ const joiner = computed(() => (rules.value.match === 'any' ? 'or' : 'and'))
 
     <div
       v-if="!readonly"
-      class="flex items-center justify-between gap-2 border-t border-default px-2 py-1.5"
+      class="flex flex-wrap items-center gap-1 border-t border-default px-2 py-1.5"
     >
       <UButton
         label="Add condition"
         icon="i-lucide-plus"
         variant="ghost"
         size="sm"
+        data-add-condition
         :disabled="!canAdd"
         @click="add"
       />
-      <span v-if="!canAdd" class="pr-2 text-xs text-muted"
-        >Up to {{ MAX_SEGMENT_CONDITIONS }} conditions</span
-      >
+      <UButton
+        label="Add group"
+        icon="i-lucide-brackets"
+        variant="ghost"
+        size="sm"
+        :disabled="!canAddGroup"
+        @click="addGroup"
+      />
+      <span v-if="limitNote" class="ms-auto pr-2 text-xs text-muted">{{ limitNote }}</span>
     </div>
   </div>
 </template>

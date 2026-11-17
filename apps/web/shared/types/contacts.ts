@@ -109,6 +109,15 @@ export interface ContactActivityItem {
   detail?: string | null
 }
 
+export interface ContactSegment {
+  id: string
+  name: string
+}
+
+export interface ContactSegmentMembership extends ContactSegment {
+  memberSince: string | null
+}
+
 export interface BulkActionResult {
   affected: number
 }

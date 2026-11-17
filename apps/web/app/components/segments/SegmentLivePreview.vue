@@ -24,7 +24,7 @@ const signature = computed(() => (parsed.value.success ? JSON.stringify(parsed.v
 const count = ref<number | null>(null)
 const preview = ref<PreviewContact[]>([])
 const pending = ref(false)
-const failed = ref(false)
+const failure = ref<string | null>(null)
 let requestId = 0
 
 async function load() {
@@ -33,7 +33,7 @@ async function load() {
   if (!result.success) return
   const current = ++requestId
   pending.value = true
-  failed.value = false
+  failure.value = null
 
   try {
     const response = await $fetch<{ count: number; preview: PreviewContact[] }>(
@@ -44,8 +44,8 @@ async function load() {
     if (current !== requestId) return
     count.value = response.count
     preview.value = response.preview
-  } catch {
-    if (current === requestId) failed.value = true
+  } catch (error) {
+    if (current === requestId) failure.value = apiErrorMessage(error)
   } finally {
     if (current === requestId) pending.value = false
   }
@@ -74,7 +74,7 @@ onMounted(() => {
 const state = computed<'invalid' | 'error' | 'loading' | 'ready'>(() => {
   if (!parsed.value.success) return 'invalid'
 
-  if (failed.value) return 'error'
+  if (failure.value !== null) return 'error'
 
   if (count.value === null) return 'loading'
 
@@ -108,6 +108,7 @@ function displayName(contact: PreviewContact) {
         </template>
         <template v-else-if="state === 'error'">
           <p class="text-sm text-highlighted">Couldn't count contacts.</p>
+          <p class="mt-1 text-xs text-muted">{{ failure }}</p>
           <UButton
             label="Retry"
             icon="i-lucide-rotate-cw"

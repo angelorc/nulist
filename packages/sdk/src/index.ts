@@ -30,6 +30,8 @@ export { Batch, Emails } from './resources/emails'
 
 export { Lists } from './resources/lists'
 
+export { Segments } from './resources/segments'
+
 export { Templates } from './resources/templates'
 
 export type * from './types/broadcasts'
@@ -41,5 +43,7 @@ export type * from './types/contacts'
 export type * from './types/emails'
 
 export type * from './types/lists'
+
+export type * from './types/segments'
 
 export type * from './types/templates'

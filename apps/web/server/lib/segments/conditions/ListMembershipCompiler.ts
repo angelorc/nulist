@@ -1,10 +1,10 @@
 import { sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { contacts, listSubscriptions, lists } from '../../../db/schema'
-import type { SegmentCondition } from '../../../../shared/types/domain'
+import type { SegmentFieldCondition } from '../../../../shared/types/domain'
 import type { TenantScope } from '../../core/TenantScope'
-import type { ConditionCompiler } from './ConditionCompiler'
-import { UnsupportedConditionError, asText } from './ConditionCompiler'
+import type { SegmentCompileContext } from '../SegmentCompileContext'
+import { FieldConditionCompiler, UnsupportedConditionError, asText } from './ConditionCompiler'
 
 /** Builds `($1, $2, …)` from uuid strings, each bound as a parameter. */
 export function uuidList(ids: readonly string[]): SQL {
@@ -25,14 +25,14 @@ export function confirmedMembership(scope: TenantScope, listIds: readonly string
 }
 
 /** `is in list` / `is not in list`: confirmed subscriptions only. */
-export class ListMembershipCompiler implements ConditionCompiler {
+export class ListMembershipCompiler extends FieldConditionCompiler {
   readonly type = 'list' as const
 
-  compile(condition: SegmentCondition, scope: TenantScope): SQL {
+  protected compileField(condition: SegmentFieldCondition, context: SegmentCompileContext): SQL {
     const listId = asText(condition.value)
 
     if (!listId) throw new UnsupportedConditionError(condition)
-    const membership = confirmedMembership(scope, [listId])
+    const membership = confirmedMembership(context.scope, [listId])
 
     switch (condition.operator) {
       case 'in_list':

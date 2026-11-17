@@ -80,6 +80,9 @@ export type SegmentFieldType =
   | 'list'
   | 'engagement'
   | 'attribute'
+  | 'segment'
+  | 'topic'
+  | 'activity'
 
 export type SegmentOperator =
   | 'eq'
@@ -102,6 +105,12 @@ export type SegmentOperator =
   | 'not_opened_within_days'
   | 'clicked_within_days'
   | 'not_clicked_within_days'
+  | 'in_segment'
+  | 'not_in_segment'
+  | 'subscribed_topic'
+  | 'unsubscribed_topic'
+  | 'has'
+  | 'has_not'
 
 export type SegmentField =
   | 'email'
@@ -115,18 +124,61 @@ export type SegmentField =
   | 'list'
   | 'engagement'
   | 'attribute'
+  | 'segment'
+  | 'topic'
+  | 'activity'
 
-export interface SegmentCondition {
-  field: SegmentField
+export type SegmentActivityEvent =
+  | 'sent'
+  | 'delivered'
+  | 'opened'
+  | 'clicked'
+  | 'bounced'
+  | 'complained'
+  | 'unsubscribed'
+
+export type SegmentActivityScope = 'any' | 'broadcast' | 'transactional'
+
+export interface SegmentFieldCondition {
+  field: Exclude<SegmentField, 'activity'>
   operator: SegmentOperator
   /** Attribute key when `field === 'attribute'`. */
   key?: string
   value?: string | number | null
 }
 
+export interface SegmentActivityTag {
+  key: string
+  value: string
+}
+
+export interface SegmentActivityCondition {
+  field: 'activity'
+  operator: Extract<SegmentOperator, 'has' | 'has_not'>
+  event: SegmentActivityEvent
+  scope: SegmentActivityScope
+  broadcastId?: string | null
+  templateId?: string | null
+  tag?: SegmentActivityTag | null
+  link?: string | null
+  times?: number
+  days?: number | null
+}
+
+export type SegmentCondition = SegmentFieldCondition | SegmentActivityCondition
+
+export type SegmentGroupMatch = 'all' | 'any' | 'none'
+
+export interface SegmentGroup {
+  match: SegmentGroupMatch
+  conditions: SegmentCondition[]
+}
+
+export type SegmentNode = SegmentCondition | SegmentGroup
+
 export interface SegmentRules {
   match: 'all' | 'any'
-  conditions: SegmentCondition[]
+  conditions: SegmentNode[]
 }
 
 // ---------------------------------------------------------------------------
@@ -136,6 +188,7 @@ export interface AudienceDefinition {
   listIds: string[]
   segmentIds: string[]
   excludeListIds: string[]
+  excludeSegmentIds: string[]
 }
 
 export interface UtmSettings {
